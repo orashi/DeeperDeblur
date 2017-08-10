@@ -30,124 +30,43 @@ class Tunnel(nn.Module):
         tunnel = [ResBlock() for i in range(19)]
         self.tunnel = nn.Sequential(*tunnel)
 
-        self.exit = nn.Conv2d(ngf, 3, kernel_size=5, stride=1, padding=2)   # no tanh???????
+        self.exit = nn.Conv2d(ngf, 3, kernel_size=5, stride=1, padding=2)  # no tanh???????
 
-    def forward(self, *bimg):
+    def forward(self, x):
+        x = self.entrance(x)
+        x = self.tunnel(x)
+        x = self.exit(x)
 
-
-        v = F.leaky_relu(self.downH(hint), 0.2, True)
-
-        x1 = F.leaky_relu(self.down1(input), 0.2, True)
-        x2 = F.leaky_relu(self.down2(x1), 0.2, True)
-        x3 = F.leaky_relu(self.down3(torch.cat([x2, v], 1)), 0.2, True)
-        x4 = F.leaky_relu(self.down4(x3), 0.2, True)
-        m = F.leaky_relu(self.mid1(x4), 0.2, True)
-        m = F.leaky_relu(self.mid1(m), 0.2, True)
-        m = F.leaky_relu(self.mid1(m), 0.2, True)
-        m = F.leaky_relu(self.mid1(m), 0.2, True)
-
-        x = F.relu(self.up4(m), True)
-        x = F.relu(self.up3(torch.cat([x, x3], 1)), True)
-        x = F.relu(self.up2(torch.cat([x, x2, v], 1)), True)
-        x = F.tanh(self.up1(torch.cat([x, x1], 1)))
         return x
-
 
 
 class netG(nn.Module):
-    def __init__(self, ngf):
-        super(UnetGenerator, self).__init__()
+    def __init__(self):
+        super(netG, self).__init__()
 
-        down = [nn.Conv2d(4, ngf, kernel_size=3, stride=1, padding=1), norm_layer(ngf)]
-        self.downH = nn.Sequential(*down)
+        self.tunnel1 = Tunnel(3)
+        self.tunnel2 = Tunnel(6)
+        self.tunnel3 = Tunnel(6)
 
-        ################ downS
-        self.down1 = nn.Conv2d(1, ngf // 2, kernel_size=4, stride=2, padding=1)
+        self.up1 = nn.Sequential(nn.Conv2d(3, 3 * 4, 5, 1, 2, bias=False),
+                                 nn.PixelShuffle(2))
+        self.up2 = nn.Sequential(nn.Conv2d(3, 3 * 4, 5, 1, 2, bias=False),
+                                 nn.PixelShuffle(2))
 
-        down = [nn.Conv2d(ngf // 2, ngf, kernel_size=4, stride=2, padding=1), norm_layer(ngf)]
-        self.down2 = nn.Sequential(*down)
+    def forward(self, *bimg):
+        results = []
 
-        down = [nn.Conv2d(ngf * 2, ngf * 4, kernel_size=4, stride=2, padding=1), norm_layer(ngf * 4)]
-        self.down3 = nn.Sequential(*down)
+        x = self.tunnel1(bimg[0])
+        results.append(x)
+        x = self.tunnel2(torch.cat([bimg[1], self.up1(x)], 1))
+        results.append(x)
+        x = self.tunnel3(torch.cat([bimg[2], self.up2(x)], 1))
+        results.append(x)
 
-        down = [nn.Conv2d(ngf * 4, ngf * 8, kernel_size=4, stride=2, padding=1), norm_layer(ngf * 8)]
-        self.down4 = nn.Sequential(*down)
-
-        ################ mid
-        mid = [nn.Conv2d(ngf * 8, ngf * 8, kernel_size=3, stride=1, padding=1), norm_layer(ngf * 8)]
-        self.mid1 = nn.Sequential(*mid)
-
-        mid = [nn.Conv2d(ngf * 8, ngf * 8, kernel_size=3, stride=1, padding=1), norm_layer(ngf * 8)]
-        self.mid2 = nn.Sequential(*mid)
-
-        mid = [nn.Conv2d(ngf * 8, ngf * 8, kernel_size=3, stride=1, padding=1), norm_layer(ngf * 8)]
-        self.mid3 = nn.Sequential(*mid)
-
-        mid = [nn.Conv2d(ngf * 8, ngf * 8, kernel_size=3, stride=1, padding=1), norm_layer(ngf * 8)]
-        self.mid4 = nn.Sequential(*mid)
-
-        ################ down--up
-
-        up = [nn.ConvTranspose2d(ngf * 8, ngf * 4, kernel_size=4, stride=2, padding=1),
-              norm_layer(ngf * 4)]
-        self.up4 = nn.Sequential(*up)
-
-        up = [nn.ConvTranspose2d(ngf * 4 * 2, ngf * 2, kernel_size=4, stride=2, padding=1),
-              norm_layer(ngf * 2)]
-        self.up3 = nn.Sequential(*up)
-
-        up = [nn.ConvTranspose2d(ngf * 2 * 2, ngf, kernel_size=4, stride=2, padding=1),
-              norm_layer(ngf)]
-        self.up2 = nn.Sequential(*up)
-
-        self.up1 = nn.ConvTranspose2d(ngf + ngf // 2, 3, kernel_size=4, stride=2, padding=1)
-
-        U_weight_init(self)
-
-    def forward(self, input, hint):
-        v = F.leaky_relu(self.downH(hint), 0.2, True)
-
-        x1 = F.leaky_relu(self.down1(input), 0.2, True)
-        x2 = F.leaky_relu(self.down2(x1), 0.2, True)
-        x3 = F.leaky_relu(self.down3(torch.cat([x2, v], 1)), 0.2, True)
-        x4 = F.leaky_relu(self.down4(x3), 0.2, True)
-        m = F.leaky_relu(self.mid1(x4), 0.2, True)
-        m = F.leaky_relu(self.mid1(m), 0.2, True)
-        m = F.leaky_relu(self.mid1(m), 0.2, True)
-        m = F.leaky_relu(self.mid1(m), 0.2, True)
-
-        x = F.relu(self.up4(m), True)
-        x = F.relu(self.up3(torch.cat([x, x3], 1)), True)
-        x = F.relu(self.up2(torch.cat([x, x2, v], 1)), True)
-        x = F.tanh(self.up1(torch.cat([x, x1], 1)))
-        return x
+        return results
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+# TODO: initialization
 
 def U_weight_init(ms):
     for m in ms.modules():

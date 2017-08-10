@@ -107,10 +107,10 @@ class ImageFolder(data.Dataset):
         #############################################
 
         result = []
-        for i in range(3):
+        for i in reversed(range(3)):
             ratio = 256 // (2 ** i)
             result.append(self.transform(Bimg.resize((ratio, ratio), Image.BICUBIC)))
-        for i in range(3):
+        for i in reversed(range(3)):
             ratio = 256 // (2 ** i)
             result.append(self.transform(Simg.resize((ratio, ratio), Image.BICUBIC)))
 
