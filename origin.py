@@ -86,15 +86,15 @@ flag3 = 1
 for epoch in range(opt.epoi, opt.niter):
     scheduler.step()
     data_iter = iter(dataloader)
-    i = 0
-    while i < len(dataloader):
+    iter_count = 0
+    while iter_count < len(dataloader):
         ############################
         # Update G network
         ############################
         netG.zero_grad()
 
         data = data_iter.next()
-        i += 1
+        iter_count += 1
 
         if opt.cuda:
             data = list(map(lambda x: x.cuda(), data))
@@ -122,7 +122,7 @@ for epoch in range(opt.epoi, opt.niter):
         fake = netG(*list(map(lambda x: Variable(x), real_bim)))
 
         contentLoss = reduce(lambda x, y: x + y, map(lambda x, y: criterion_L2(x, Variable(y)), fake, real_sim)) / 6.0
-        contentLoss.backward()
+        contentLoss.backward(map(lambda x, y: criterion_L2(x, Variable(y)), fake, real_sim))
         errG = contentLoss
 
         optimizerG.step()
@@ -143,26 +143,27 @@ for epoch in range(opt.epoi, opt.niter):
               % (epoch, opt.niter, i, len(dataloader), gen_iterations, errG.data[0]))
 
         if gen_iterations % 100 == 0:
-            fake = netG(*list(map(lambda x: Variable(x, volatile=True), real_bim)))
+            fake = netG(*list(map(lambda x: Variable(x, volatile=True), fixed_blur)))
 
             if flag3:
                 imageW = []
                 for i in range(3):
                     imageW.append(viz.images(
-                        fake[i].mul(0.5).add(0.5).cpu().numpy(),
+                        fake[i].data.mul(0.5).add(0.5).cpu().numpy(),
                         opts=dict(title='deblur img', caption='level ' + str(i + 1))
                     ))
                 flag3 -= 1
             else:
                 for i in range(3):
                     viz.images(
-                        fake[i].mul(0.5).add(0.5).cpu().numpy(),
+                        fake[i].data.mul(0.5).add(0.5).cpu().numpy(),
                         win=imageW[i],
                         opts=dict(title='deblur img', caption='level ' + str(i + 1))
                     )
         if gen_iterations % 1000 == 0:
-            vutils.save_image(fake.data.mul(0.5).add(0.5),
-                              '%s/fake_samples_gen_iter_%08d.png' % (opt.outf, gen_iterations))
+            for i in range(3):
+                vutils.save_image(fake[i].data.mul(0.5).add(0.5),
+                                  '%s/fake_samples%d_gen_iter_%08d.png' % (opt.outf, i, gen_iterations))
 
         gen_iterations += 1
 

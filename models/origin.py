@@ -4,22 +4,24 @@ import torch.nn.functional as F
 from torch.nn import init
 
 
-class ResBlock(nn.Module):  # paper original
+class ResBlock(nn.Module):  # not paper original
     def __init__(self):
         super(ResBlock, self).__init__()
         self.conv1 = nn.Conv2d(64, 64, kernel_size=5, stride=1, padding=2)
+        self.norm1 = nn.InstanceNorm2d(64)
         self.conv2 = nn.Conv2d(64, 64, kernel_size=5, stride=1, padding=2)
+        self.norm2 = nn.InstanceNorm2d(64)
 
     def forward(self, x):
-        out = F.relu(self.conv1(x), True)
-        out = self.conv2(out)
+        out = self.conv1(F.relu(self.norm1(x), True))
+        out = self.conv2(F.relu(self.norm2(out), True))
 
         out += x
         return out
 
 
 class Tunnel(nn.Module):
-    def __init__(self, in_channel, ngf=64, len=19):
+    def __init__(self, in_channel, ngf=64, len=16):
         super(Tunnel, self).__init__()
 
         self.entrance = nn.Conv2d(in_channel, ngf, kernel_size=5, stride=1, padding=2)
@@ -58,11 +60,11 @@ class Pyramid(nn.Module):
     def forward(self, *bimg):
         results = []
 
-        x = self.tunnel1(bimg[0])
+        x = F.tanh(self.tunnel1(bimg[0]))
         results.append(x)
-        x = self.tunnel2(torch.cat([bimg[1], self.up1(x)], 1))
+        x = F.tanh(self.tunnel2(torch.cat([bimg[1], self.up1(x)], 1)))
         results.append(x)
-        x = self.tunnel3(torch.cat([bimg[2], self.up2(x)], 1))
+        x = F.tanh(self.tunnel3(torch.cat([bimg[2], self.up2(x)], 1)))
         results.append(x)
 
         return results
