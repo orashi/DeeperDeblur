@@ -96,7 +96,6 @@ for epoch in range(opt.epoi, opt.niter):
         data = data_iter.next()
         i += 1
 
-
         if opt.cuda:
             data = list(map(lambda x: x.cuda(), data))
 
@@ -114,9 +113,9 @@ for epoch in range(opt.epoi, opt.niter):
                 )
 
                 vutils.save_image(real_bim[i].mul(0.5).add(0.5),
-                                  '%s/blur_samples' + str(i + 1) + '.png' % opt.outf)
+                                  '%s/blur_samples' % opt.outf + str(i + 1) + '.png')
                 vutils.save_image(real_sim[i].mul(0.5).add(0.5),
-                                  '%s/sharp_samples' + str(i + 1) + '.png' % opt.outf)
+                                  '%s/sharp_samples' % opt.outf + str(i + 1) + '.png')
             fixed_blur = real_bim
             flag -= 1
 
