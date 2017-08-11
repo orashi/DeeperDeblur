@@ -27,7 +27,7 @@ class Tunnel(nn.Module):
 
         self.entrance = nn.Conv2d(in_channel, ngf, kernel_size=5, stride=1, padding=2)
 
-        tunnel = [ResBlock() for i in range(19)]
+        tunnel = [ResBlock() for _ in range(len)]
         self.tunnel = nn.Sequential(*tunnel)
 
         self.exit = nn.Conv2d(ngf, 3, kernel_size=5, stride=1, padding=2)  # no tanh???????

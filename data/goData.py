@@ -72,12 +72,14 @@ def make_dataset(dir):
     return images
 
 
+# TODO: abandon gamma
+
 def loader(path):
     return Image.open(path).convert('RGB')
 
 
 class ImageFolder(data.Dataset):
-    def __init__(self, root, transform=None):   # , option=None):
+    def __init__(self, root, transform=None):  # , option=None):
         imgs = make_dataset(root)
         if len(imgs) == 0:
             raise (RuntimeError("Found 0 images in folders."))
