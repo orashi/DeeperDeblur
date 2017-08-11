@@ -130,7 +130,7 @@ def CreateDataLoader(opt):
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
 
-    dataset = ImageFolder(root=opt.dataroot, transform=Trans, option=opt)
+    dataset = ImageFolder(root=opt.dataroot, transform=Trans)
 
     assert dataset
 
