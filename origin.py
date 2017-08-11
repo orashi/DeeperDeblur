@@ -96,10 +96,11 @@ for epoch in range(opt.epoi, opt.niter):
         data = data_iter.next()
         i += 1
 
-        real_bim, real_sim = data[0:3], data[3:]
 
         if opt.cuda:
-            real_bim, real_sim = real_bim.cuda(), real_sim.cuda()
+            data = map(lambda x: x.cuda(), data)
+
+        real_bim, real_sim = data[0:3], data[3:]
 
         if flag:  # fix samples
             for i in range(3):
