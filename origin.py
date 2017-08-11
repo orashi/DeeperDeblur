@@ -98,7 +98,7 @@ for epoch in range(opt.epoi, opt.niter):
 
 
         if opt.cuda:
-            data = map(lambda x: x.cuda(), data)
+            data = list(map(lambda x: x.cuda(), data))
 
         real_bim, real_sim = data[0:3], data[3:]
 
@@ -120,7 +120,7 @@ for epoch in range(opt.epoi, opt.niter):
             fixed_blur = real_bim
             flag -= 1
 
-        fake = netG(*map(lambda x: Variable(x), real_bim))
+        fake = netG(*list(map(lambda x: Variable(x), real_bim)))
 
         contentLoss = reduce(lambda x, y: x + y, map(lambda x, y: criterion_L2(x, Variable(y)), fake, real_sim)) / 6.0
         contentLoss.backward()
@@ -144,7 +144,7 @@ for epoch in range(opt.epoi, opt.niter):
               % (epoch, opt.niter, i, len(dataloader), gen_iterations, errG.data[0]))
 
         if gen_iterations % 100 == 0:
-            fake = netG(*map(lambda x: Variable(x, volatile=True), real_bim))
+            fake = netG(*list(map(lambda x: Variable(x, volatile=True), real_bim)))
 
             if flag3:
                 imageW = []
