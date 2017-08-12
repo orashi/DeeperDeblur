@@ -56,12 +56,11 @@ class Pyramid(nn.Module):
                                      Tunnel(16),
                                      up2)
         self.tunnel1 = nn.Sequential(nn.Conv2d(128, 64, 5, 1, 2, bias=False),
-                                     Tunnel(16),
-                                     nn.ReLU(inplace=True),
-                                     nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1))
+                                     Tunnel(16))
 
         self.exit = nn.Sequential(nn.Conv2d(64, 3, kernel_size=3, stride=1, padding=1),
                                   nn.Tanh())
+        # self.exit = nn.Conv2d(64, 3, kernel_size=3, stride=1, padding=1)
 
         for m in self.modules():  # init
             classname = m.__class__.__name__
@@ -76,7 +75,7 @@ class Pyramid(nn.Module):
         lv3 = self.entrance3(lv2)  # need discussion
 
         lv3 = self.tunnel3(lv3)
-        lv2 = self.tunnel2(torch.cat([lv3, lv2], 1))
-        lv1 = self.tunnel1(torch.cat([lv2, lv1], 1))
+        lv2 = self.tunnel2(torch.cat([lv3, lv2.detach()], 1))
+        lv1 = self.tunnel1(torch.cat([lv2, lv1.detach()], 1))
 
-        return self.exit(bimg + lv1)
+        return self.exit(lv1)

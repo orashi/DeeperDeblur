@@ -146,13 +146,13 @@ for epoch in range(opt.epoi, opt.niter):
 
             if flag3:
                 imageW = viz.images(
-                    fake.data.mul(0.5).add(0.5).cpu().numpy(),
+                    fake.data.mul(0.5).add(0.5).cpu().clamp(0, 1).numpy(),
                     opts=dict(title='deblur img', caption='level final')
                 )
                 flag3 -= 1
             else:
                 viz.images(
-                    fake.data.mul(0.5).add(0.5).cpu().numpy(),
+                    fake.data.mul(0.5).add(0.5).cpu().clamp(0, 1).numpy(),
                     win=imageW,
                     opts=dict(title='deblur img', caption='level final')
                 )
