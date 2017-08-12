@@ -12,7 +12,7 @@ from torch.autograd import Variable
 from visdom import Visdom
 
 from data.goData import CreateDataLoader
-from models.origin import *
+from models.modiModel import *
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataroot', required=True, help='path to dataset')

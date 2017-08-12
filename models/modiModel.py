@@ -45,8 +45,8 @@ class Pyramid(nn.Module):
         super(Pyramid, self).__init__()
 
         self.tunnel1 = Tunnel(3, 8)
-        self.tunnel2 = Tunnel(128, 8)
-        self.tunnel3 = Tunnel(128, 8)
+        self.tunnel2 = Tunnel(128, 12)
+        self.tunnel3 = Tunnel(128, 16)
 
         self.up2 = nn.Sequential(nn.Conv2d(64, 64 * 4, 3, 1, 1, bias=False),
                                  nn.PixelShuffle(2))
