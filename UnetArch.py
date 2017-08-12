@@ -120,7 +120,7 @@ for epoch in range(opt.epoi, opt.niter):
 
         fake = netG(Variable(real_bim))
 
-        contentLoss = criterion_L1(fake, Variable(real_sim))
+        contentLoss = criterion_L2(fake, Variable(real_sim))
         contentLoss.backward()
         errG = contentLoss
 
