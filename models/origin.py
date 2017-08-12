@@ -57,7 +57,7 @@ class Pyramid(nn.Module):
         results.append(x)
         x = self.tunnel2(torch.cat([bimg[1], self.up2(x)], 1))
         results.append(x)
-        x = self.tunnel3(torch.cat([self.entrance3(bimg[2]), self.up3(x)], 1))
+        x = self.tunnel3(torch.cat([bimg[2], self.up3(x)], 1))
         results.append(x)
 
         return results
