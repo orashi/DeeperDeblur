@@ -122,7 +122,7 @@ for epoch in range(opt.epoi, opt.niter):
         fake = netG(*list(map(lambda x: Variable(x), real_bim)))
 
         contentLoss = reduce(lambda x, y: x + y, map(lambda x, y: criterion_L2(x, Variable(y)), fake, real_sim)) / 6.0
-        contentLoss.backward(map(lambda x, y: criterion_L2(x, Variable(y)), fake, real_sim))
+        contentLoss.backward()
         errG = contentLoss
 
         optimizerG.step()
@@ -140,7 +140,7 @@ for epoch in range(opt.epoi, opt.niter):
             viz.line(np.array([errG.data[0]]), np.array([gen_iterations]), update='append', win=G1)
 
         print('[%d/%d][%d/%d][%d] err_G: %f'
-              % (epoch, opt.niter, i, len(dataloader), gen_iterations, errG.data[0]))
+              % (epoch, opt.niter, iter_count, len(dataloader), gen_iterations, errG.data[0]))
 
         if gen_iterations % 100 == 0:
             fake = netG(*list(map(lambda x: Variable(x, volatile=True), fixed_blur)))
