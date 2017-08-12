@@ -78,7 +78,7 @@ if opt.cuda:
 
 # setup optimizer
 optimizerG = optim.Adam(netG.parameters(), lr=opt.lrG, betas=(opt.beta1, 0.9))
-scheduler = lr_scheduler.MultiStepLR(optimizerG, milestones=[71], gamma=0.1, last_epoch=opt.epoi - 1)  # 1.5*10^5 iter
+scheduler = lr_scheduler.MultiStepLR(optimizerG, milestones=[71-opt.epoi], gamma=0.1)  # 1.5*10^5 iter
 
 flag = 1
 flag2 = 1
