@@ -110,9 +110,9 @@ for epoch in range(opt.epoi, opt.niter):
                 opts=dict(title='sharp img', caption='level final')
             )
 
-            vutils.save_image(real_bim[i].mul(0.5).add(0.5),
+            vutils.save_image(real_bim.mul(0.5).add(0.5),
                               '%s/blur_samples' % opt.outf + '.png')
-            vutils.save_image(real_sim[i].mul(0.5).add(0.5),
+            vutils.save_image(real_sim.mul(0.5).add(0.5),
                               '%s/sharp_samples' % opt.outf + '.png')
 
             fixed_blur = real_bim
