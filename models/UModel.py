@@ -52,10 +52,10 @@ class Pyramid(nn.Module):
 
         self.tunnel3 = nn.Sequential(Tunnel(16),
                                      up3)
-        self.tunnel2 = nn.Sequential(nn.Conv2d(128, 64, 5, 1, 1, bias=False),
+        self.tunnel2 = nn.Sequential(nn.Conv2d(128, 64, 5, 1, 2, bias=False),
                                      Tunnel(16),
                                      up2)
-        self.tunnel1 = nn.Sequential(nn.Conv2d(128, 64, 5, 1, 1, bias=False),
+        self.tunnel1 = nn.Sequential(nn.Conv2d(128, 64, 5, 1, 2, bias=False),
                                      Tunnel(16),
                                      nn.ReLU(inplace=True),
                                      nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1))
