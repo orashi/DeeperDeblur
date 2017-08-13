@@ -108,7 +108,15 @@ class ImageFolder(data.Dataset):
         # TODO: random noise & beyond 256 support
         #############################################
 
-        return self.transform(Bimg), self.transform(Simg)
+        result = []
+        for i in reversed(range(3)):
+            ratio = 256 // (2 ** i)
+            result.append(self.transform(Bimg.resize((ratio, ratio), Image.BICUBIC)))
+        for i in reversed(range(3)):
+            ratio = 256 // (2 ** i)
+            result.append(self.transform(Simg.resize((ratio, ratio), Image.BICUBIC)))
+
+        return result
 
     def __len__(self):
         return len(self.imgs)

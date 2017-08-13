@@ -1,6 +1,7 @@
 import argparse
 import os
 import random
+from functools import reduce
 
 import numpy as np
 import torch.backends.cudnn as cudnn
@@ -125,17 +126,20 @@ for epoch in range(opt.epoi, opt.niter):
 
             if opt.cuda:
                 data = list(map(lambda x: x.cuda(), data))
-            real_bim, real_sim = data[0], data[1]
+            real_bim, real_sim = data[0:3], data[3:]
 
             # train with fake
 
-            fake_sim = netG(Variable(real_bim, volatile=True)).data
-            errD_fake_vec = netD(Variable(torch.cat((fake_sim, real_bim), 1)))
-            errD_fake = criterion_GAN(errD_fake_vec, False)
+            fake_Vsim = netG(Variable(real_bim[2], volatile=True))
+
+            errD_fake = reduce(lambda x, y: x + y,
+                               map(lambda x, y: criterion_GAN(netD(Variable(torch.cat((x.data, Variable(y)), 1))),
+                                                              False), fake_Vsim, real_bim))
             errD_fake.backward(retain_graph=True)  # backward on score on real
 
-            errD_real_vec = netD(Variable(torch.cat((real_sim, real_bim), 1)))
-            errD_real = criterion_GAN(errD_real_vec, True)
+            errD_real = reduce(lambda x, y: x + y,
+                               map(lambda x, y: criterion_GAN(netD(Variable(torch.cat((x.data, Variable(y)), 1))),
+                                                              True), real_sim, real_bim))
             errD_real.backward(retain_graph=True)  # backward on score on real
 
             errD = errD_real + errD_fake
@@ -158,40 +162,40 @@ for epoch in range(opt.epoi, opt.niter):
             if opt.cuda:
                 data = list(map(lambda x: x.cuda(), data))
 
-            real_bim, real_sim = data[0], data[1]
+            real_bim, real_sim = data[0:3], data[3:]
 
             if flag:  # fix samples
                 viz.images(
-                    real_bim.mul(0.5).add(0.5).cpu().numpy(),
+                    real_bim[2].mul(0.5).add(0.5).cpu().numpy(),
                     opts=dict(title='blur img', caption='level final')
                 )
                 viz.images(
-                    real_sim.mul(0.5).add(0.5).cpu().numpy(),
+                    real_sim[2].mul(0.5).add(0.5).cpu().numpy(),
                     opts=dict(title='sharp img', caption='level final')
                 )
 
-                vutils.save_image(real_bim.mul(0.5).add(0.5),
+                vutils.save_image(real_bim[2].mul(0.5).add(0.5),
                                   '%s/blur_samples' % opt.outf + '.png')
-                vutils.save_image(real_sim.mul(0.5).add(0.5),
+                vutils.save_image(real_sim[2].mul(0.5).add(0.5),
                                   '%s/sharp_samples' % opt.outf + '.png')
 
-                fixed_blur = real_bim
+                fixed_blur = real_bim[2]
                 flag -= 1
 
-            fake = netG(Variable(real_bim))
+            fake = netG(Variable(real_bim[2]))
 
             if gen_iterations < opt.baseGeni:
-                contentLoss = criterion_L2(fake, Variable(real_sim))
+                contentLoss = reduce(lambda x, y: x + y, map(lambda x, y: criterion_L2(x, Variable(y)), fake, real_sim))
                 contentLoss.backward()
                 errG = contentLoss
             else:
-                errG_fake_vec = netD(torch.cat((fake, Variable(real_bim)), 1))
-                errG = criterion_GAN(errG_fake_vec, True) * 0.5
+                errG = reduce(lambda x, y: x + y,
+                              map(lambda x, y: criterion_GAN(netD(torch.cat((x, Variable(y)), 1)), True) * 0.5, fake,
+                                  real_bim))
                 errG.backward(retain_graph=True)
 
-                contentLoss = criterion_L2(fake, Variable(real_sim))
+                contentLoss = reduce(lambda x, y: x + y, map(lambda x, y: criterion_L2(x, Variable(y)), fake, real_sim))
                 contentLoss.backward()
-
 
             optimizerG.step()
 
@@ -246,25 +250,24 @@ for epoch in range(opt.epoi, opt.niter):
                   % (epoch, opt.niter, iter_count, len(dataloader), gen_iterations,
                      errD.data[0], errG.data[0], errD_real.data[0], errD_fake.data[0], contentLoss.data[0]))
 
-
         if gen_iterations % 100 == 0:
             fake = netG(Variable(fixed_blur, volatile=True))
 
             if flag3:
                 imageW = viz.images(
-                    fake.data.mul(0.5).add(0.5).cpu().clamp(0, 1).numpy(),
+                    fake[2].data.mul(0.5).add(0.5).cpu().clamp(0, 1).numpy(),
                     opts=dict(title='deblur img', caption='level final')
                 )
                 flag3 -= 1
             else:
                 viz.images(
-                    fake.data.mul(0.5).add(0.5).cpu().clamp(0, 1).numpy(),
+                    fake[2].data.mul(0.5).add(0.5).cpu().clamp(0, 1).numpy(),
                     win=imageW,
                     opts=dict(title='deblur img', caption='level final')
                 )
 
         if gen_iterations % 1000 == 0:
-            vutils.save_image(fake.data.mul(0.5).add(0.5),
+            vutils.save_image(fake[2].data.mul(0.5).add(0.5),
                               '%s/fake_samples_gen_iter_%08d.png' % (opt.outf, gen_iterations))
 
         gen_iterations += 1
