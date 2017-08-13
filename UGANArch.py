@@ -165,14 +165,15 @@ for epoch in range(opt.epoi, opt.niter):
             real_bim, real_sim = data[0:3], data[3:]
 
             if flag:  # fix samples
-                viz.images(
-                    real_bim[2].mul(0.5).add(0.5).cpu().numpy(),
-                    opts=dict(title='blur img', caption='level final')
-                )
-                viz.images(
-                    real_sim[2].mul(0.5).add(0.5).cpu().numpy(),
-                    opts=dict(title='sharp img', caption='level final')
-                )
+                for i in range(3):
+                    viz.images(
+                        real_bim[i].mul(0.5).add(0.5).cpu().numpy(),
+                        opts=dict(title='blur img', caption='level ' + str(i + 1))
+                    )
+                    viz.images(
+                        real_sim[i].mul(0.5).add(0.5).cpu().numpy(),
+                        opts=dict(title='sharp img', caption='level ' + str(i + 1))
+                    )
 
                 vutils.save_image(real_bim[2].mul(0.5).add(0.5),
                                   '%s/blur_samples' % opt.outf + '.png')
@@ -254,17 +255,20 @@ for epoch in range(opt.epoi, opt.niter):
             fake = netG(Variable(fixed_blur, volatile=True))
 
             if flag3:
-                imageW = viz.images(
-                    fake[2].data.mul(0.5).add(0.5).cpu().clamp(0, 1).numpy(),
-                    opts=dict(title='deblur img', caption='level final')
-                )
+                imageW = []
+                for i in range(3):
+                    imageW.append(viz.images(
+                        fake[i].data.mul(0.5).add(0.5).cpu().numpy(),
+                        opts=dict(title='deblur img', caption='level ' + str(i + 1))
+                    ))
                 flag3 -= 1
             else:
-                viz.images(
-                    fake[2].data.mul(0.5).add(0.5).cpu().clamp(0, 1).numpy(),
-                    win=imageW,
-                    opts=dict(title='deblur img', caption='level final')
-                )
+                for i in range(3):
+                    viz.images(
+                        fake[i].data.mul(0.5).add(0.5).cpu().numpy(),
+                        win=imageW[i],
+                        opts=dict(title='deblur img', caption='level ' + str(i + 1))
+                    )
 
         if gen_iterations % 1000 == 0:
             vutils.save_image(fake[2].data.mul(0.5).add(0.5),
