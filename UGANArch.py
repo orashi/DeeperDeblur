@@ -138,7 +138,7 @@ for epoch in range(opt.epoi, opt.niter):
             errD_fake.backward(retain_graph=True)  # backward on score on real
 
             errD_real = reduce(lambda x, y: x + y,
-                               map(lambda x, y: criterion_GAN(netD(Variable(torch.cat([x.data, y], 1))),
+                               map(lambda x, y: criterion_GAN(netD(Variable(torch.cat([x, y], 1))),
                                                               True), real_sim, real_bim))
             errD_real.backward(retain_graph=True)  # backward on score on real
 
