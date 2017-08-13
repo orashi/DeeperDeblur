@@ -133,12 +133,12 @@ for epoch in range(opt.epoi, opt.niter):
             fake_Vsim = netG(Variable(real_bim[2], volatile=True))
 
             errD_fake = reduce(lambda x, y: x + y,
-                               map(lambda x, y: criterion_GAN(netD(Variable(torch.cat([x.data, Variable(y)], 1))),
+                               map(lambda x, y: criterion_GAN(netD(Variable(torch.cat([x.data, y], 1))),
                                                               False), fake_Vsim, real_bim))
             errD_fake.backward(retain_graph=True)  # backward on score on real
 
             errD_real = reduce(lambda x, y: x + y,
-                               map(lambda x, y: criterion_GAN(netD(Variable(torch.cat([x.data, Variable(y)], 1))),
+                               map(lambda x, y: criterion_GAN(netD(Variable(torch.cat([x.data, y], 1))),
                                                               True), real_sim, real_bim))
             errD_real.backward(retain_graph=True)  # backward on score on real
 
