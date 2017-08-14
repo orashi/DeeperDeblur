@@ -206,19 +206,19 @@ for epoch in range(opt.epoi, opt.niter):
         if gen_iterations < opt.baseGeni:
             if flag2:
                 L1window = viz.line(
-                    np.array([contentLoss.data[0]]), np.array([gen_iterations]),
+                    np.array([contentLoss.data[0]/3]), np.array([gen_iterations]),
                     opts=dict(title='MSE loss toward real', caption='Gnet content loss')
                 )
                 flag2 -= 1
             else:
-                viz.line(np.array([contentLoss.data[0]]), np.array([gen_iterations]), update='append', win=L1window)
+                viz.line(np.array([contentLoss.data[0]/3]), np.array([gen_iterations]), update='append', win=L1window)
 
             print('[%d/%d][%d/%d][%d] err_G: %f'
-                  % (epoch, opt.niter, iter_count, len(dataloader), gen_iterations, errG.data[0]))
+                  % (epoch, opt.niter, iter_count, len(dataloader), gen_iterations, contentLoss.data[0]/3))
         else:
             if flag4:
                 D1 = viz.line(
-                    np.array([errD.data[0]]), np.array([gen_iterations]),
+                    np.array([errD.data[0]/3]), np.array([gen_iterations]),
                     opts=dict(title='errD(distinguishability)', caption='total Dloss')
                 )
                 D2 = viz.line(
@@ -230,26 +230,26 @@ for epoch in range(opt.epoi, opt.niter):
                     opts=dict(title='errD_fake', caption='fake\'s mistake')
                 )
                 G1 = viz.line(
-                    np.array([errG.data[0]]), np.array([gen_iterations]),
+                    np.array([errG.data[0]/3]), np.array([gen_iterations]),
                     opts=dict(title='Gnet loss toward real', caption='Gnet loss')
                 )
                 flag4 -= 1
             if flag2:
                 L1window = viz.line(
-                    np.array([contentLoss.data[0]]), np.array([gen_iterations]),
+                    np.array([contentLoss.data[0]/3]), np.array([gen_iterations]),
                     opts=dict(title='MSE loss toward real', caption='Gnet content loss')
                 )
                 flag2 -= 1
 
-            viz.line(np.array([errD.data[0]]), np.array([gen_iterations]), update='append', win=D1)
+            viz.line(np.array([errD.data[0]/3]), np.array([gen_iterations]), update='append', win=D1)
             viz.line(np.array([errD_real.data[0]]), np.array([gen_iterations]), update='append', win=D2)
             viz.line(np.array([errD_fake.data[0]]), np.array([gen_iterations]), update='append', win=D3)
-            viz.line(np.array([errG.data[0]]), np.array([gen_iterations]), update='append', win=G1)
-            viz.line(np.array([contentLoss.data[0]]), np.array([gen_iterations]), update='append', win=L1window)
+            viz.line(np.array([errG.data[0]/3]), np.array([gen_iterations]), update='append', win=G1)
+            viz.line(np.array([contentLoss.data[0]/3]), np.array([gen_iterations]), update='append', win=L1window)
 
             print('[%d/%d][%d/%d][%d] errD: %f err_G: %f err_D_real: %f err_D_fake %f content loss %f'
                   % (epoch, opt.niter, iter_count, len(dataloader), gen_iterations,
-                     errD.data[0], errG.data[0], errD_real.data[0], errD_fake.data[0], contentLoss.data[0]))
+                     errD.data[0]/3, errG.data[0]/3, errD_real.data[0], errD_fake.data[0], contentLoss.data[0]/3))
 
         if gen_iterations % 100 == 0:
             fake = netG(Variable(fixed_blur, volatile=True))

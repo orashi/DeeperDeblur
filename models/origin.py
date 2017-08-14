@@ -40,9 +40,9 @@ class Pyramid(nn.Module):
         self.tunnel2 = Tunnel(6, 19)
         self.tunnel3 = Tunnel(6, 19)
 
-        self.up2 = nn.Sequential(nn.Conv2d(3, 3 * 4, 3, 1, 1, bias=False),
+        self.up2 = nn.Sequential(nn.Conv2d(3, 3 * 4, 5, 1, 2, bias=False),
                                  nn.PixelShuffle(2))
-        self.up3 = nn.Sequential(nn.Conv2d(3, 3 * 4, 3, 1, 1, bias=False),
+        self.up3 = nn.Sequential(nn.Conv2d(3, 3 * 4, 5, 1, 2, bias=False),
                                  nn.PixelShuffle(2))
 
         for m in self.modules():  # init

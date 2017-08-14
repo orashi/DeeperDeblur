@@ -170,3 +170,7 @@ for epoch in range(opt.epoi, opt.niter):
     # do checkpointing
     if epoch % opt.cut == 0:
         torch.save(netG.state_dict(), '%s/netG_epoch_%d.pth' % (opt.outf, epoch))
+
+# TODO: PSNR SSIM
+# TODO: ceLoss
+# TODO: Model
