@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.nn import init
 
 
 class ResBlock(nn.Module):  # not paper original
@@ -43,10 +42,10 @@ class Pyramid(nn.Module):
         self.up3 = nn.Sequential(nn.Conv2d(3, 3 * 4, 5, 1, 2),
                                  nn.PixelShuffle(2))
 
-        for m in self.modules():  # init
-            classname = m.__class__.__name__
-            if classname.find('Conv2d') != -1:
-                m.weight.data = init.kaiming_normal(m.weight.data)
+        # for m in self.modules():  # init
+        #     classname = m.__class__.__name__
+        #     if classname.find('Conv2d') != -1:
+        #         m.weight.data = init.kaiming_normal(m.weight.data)
 
     def forward(self, *bimg):
         results = []
@@ -92,12 +91,12 @@ class Discriminator(nn.Module):
         self.down = nn.Sequential(*sequence)
         self.linear = nn.Linear(ndf * 16, 1)
 
-        for m in self.modules():
-            classname = m.__class__.__name__
-            if classname.find('Conv') != -1:
-                m.weight.data = init.kaiming_normal(m.weight.data, a=0.2)
-            elif classname.find('Linear') != -1:
-                m.weight.data = init.kaiming_normal(m.weight.data, a=0.2)
+        # for m in self.modules():
+        #     classname = m.__class__.__name__
+        #     if classname.find('Conv') != -1:
+        #         m.weight.data = init.kaiming_normal(m.weight.data, a=0.2)
+        #     elif classname.find('Linear') != -1:
+        #         m.weight.data = init.kaiming_normal(m.weight.data, a=0.2)
 
     def forward(self, input):
         x = self.down(input)
