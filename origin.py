@@ -62,11 +62,11 @@ cudnn.benchmark = True
 
 viz = Visdom(env=opt.env)
 epoL = viz.line(
-    np.array([[0, 0]]), np.array([opt.epoi]),
+    np.array([0]), np.array([opt.epoi]),
     opts=dict(title='Train epoch Loss', caption='Epoch Loss')
 )
 Test = viz.line(
-    np.array([[0, 0]]), np.array([opt.epoi]),
+    np.array([0]), np.array([opt.epoi]),
     opts=dict(title='Test PSNR', caption='PSNR')
 )
 
@@ -152,7 +152,7 @@ for epoch in range(opt.epoi, opt.niter):
                 errD_fake = criterion_BCE(netD(Variable(fake_Vsim[2].data)), Variable(label.fill_(fake_label)))
                 errD_fake.backward(retain_graph=True)
 
-                errD_real = criterion_BCE(netD(Variable(real_sim)), Variable(label.fill_(real_label)))
+                errD_real = criterion_BCE(netD(Variable(real_sim[2])), Variable(label.fill_(real_label)))
                 errD_real.backward()
 
                 errD = errD_real + errD_fake

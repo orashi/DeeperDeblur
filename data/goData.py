@@ -111,6 +111,7 @@ class ImageFolder_train(data.Dataset):
         result = []
         indices = [0, 1, 2]
         random.shuffle(indices)
+        indices = torch.LongTensor(indices)
         for i in reversed(range(3)):
             ratio = 256 // (2 ** i)
             result.append(torch.index_select(self.transform(Bimg.resize((ratio, ratio), Image.BICUBIC)), 0, indices))

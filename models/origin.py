@@ -63,7 +63,7 @@ class Pyramid(nn.Module):
 
 class DisBlock(nn.Module):  # not paper original
     def __init__(self, inc, ouc, str, filtSize=5, pad=2):
-        super(ResBlock, self).__init__()
+        super(DisBlock, self).__init__()
         self.conv = nn.Conv2d(inc, ouc, kernel_size=filtSize, stride=str, padding=pad, bias=False)
 
     def forward(self, x):
@@ -74,6 +74,7 @@ class DisBlock(nn.Module):  # not paper original
 class Discriminator(nn.Module):
     def __init__(self, ndf=32):
         super(Discriminator, self).__init__()
+        self.ndf = ndf
 
         sequence = [
             DisBlock(3, ndf, 1),
@@ -100,7 +101,7 @@ class Discriminator(nn.Module):
 
     def forward(self, input):
         x = self.down(input)
-        return self.linear(x.view(-1))  # sigmoid in criterion "BCEWithLogitsLoss" for numerical stability
+        return self.linear(x.view(-1, self.ndf * 16)).view(-1)  # sigmoid in criterion "BCEWithLogitsLoss" for numerical stability
 
 
 
