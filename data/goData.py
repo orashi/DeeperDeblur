@@ -66,20 +66,18 @@ def make_dataset(dir):
     images = []
     for bag in sorted(os.listdir(dir)):
         root = os.path.join(dir, bag)
-        for fname in sorted(os.listdir(os.path.join(root, 'blur_gamma'))):
+        for fname in sorted(os.listdir(os.path.join(root, 'blur'))):
             if is_image_file(fname):
-                Bpath, Spath = os.path.join(root, 'blur_gamma', fname), os.path.join(root, 'sharp', fname)
+                Bpath, Spath = os.path.join(root, 'blur', fname), os.path.join(root, 'sharp', fname)
                 images.append((Bpath, Spath))
     return images
 
-
-# TODO: abandon gamma
 
 def loader(path):
     return Image.open(path).convert('RGB')
 
 
-class ImageFolder(data.Dataset):
+class ImageFolder_train(data.Dataset):
     def __init__(self, root, transform=None):  # , option=None):
         imgs = make_dataset(root)
         if len(imgs) == 0:
@@ -87,7 +85,6 @@ class ImageFolder(data.Dataset):
 
         self.imgs = imgs
         self.transform = transform
-        # self.opt = option
 
     def __getitem__(self, index):
         Bpath, Spath = self.imgs[index]
@@ -107,6 +104,8 @@ class ImageFolder(data.Dataset):
         Bimg, Simg = ImageEnhance.Color(Bimg).enhance(satRatio), ImageEnhance.Color(Simg).enhance(satRatio)
 
         # TODO: random noise & beyond 256 support
+        # TODO: discuss: gaussian pyramid?
+
         #############################################
 
         result = []
@@ -125,6 +124,24 @@ class ImageFolder(data.Dataset):
         return len(self.imgs)
 
 
+class ImageFolder_test(data.Dataset):
+    def __init__(self, root, transform=None):  # , option=None):
+        imgs = make_dataset(root)
+        if len(imgs) == 0:
+            raise (RuntimeError("Found 0 images in folders."))
+
+        self.imgs = imgs
+        self.transform = transform
+
+    def __getitem__(self, index):
+        Bpath, Spath = self.imgs[index]
+        Bimg, Simg = loader(Bpath), loader(Spath)
+        return self.transform(Bimg), self.transform(Simg)
+
+    def __len__(self):
+        return len(self.imgs)
+
+
 def CreateDataLoader(opt):
     random.seed(opt.manualSeed)
 
@@ -133,9 +150,10 @@ def CreateDataLoader(opt):
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
 
-    dataset = ImageFolder(root=opt.dataroot, transform=Trans)
+    dataset_train = ImageFolder_train(root=os.path.join(opt.dataroot, 'train'), transform=Trans)
+    dataset_test = ImageFolder_test(root=os.path.join(opt.dataroot, 'test'), transform=Trans)
 
-    assert dataset
+    assert dataset_test, dataset_train
 
-    return data.DataLoader(dataset, batch_size=opt.batchSize,
-                           shuffle=True, num_workers=int(opt.workers), drop_last=True)
+    return data.DataLoader(dataset_train, batch_size=opt.batchSize, shuffle=True, num_workers=int(opt.workers),
+                           drop_last=True), data.DataLoader(dataset_test, batch_size=10, num_workers=int(opt.workers))

@@ -8,9 +8,7 @@ class ResBlock(nn.Module):  # not paper original
     def __init__(self):
         super(ResBlock, self).__init__()
         self.conv1 = nn.Conv2d(64, 64, kernel_size=5, stride=1, padding=2)
-        # self.norm1 = nn.InstanceNorm2d(64)
         self.conv2 = nn.Conv2d(64, 64, kernel_size=5, stride=1, padding=2)
-        # self.norm2 = nn.InstanceNorm2d(64)
 
     def forward(self, x):
         out = self.conv1(x)
@@ -91,7 +89,6 @@ class Discriminator(nn.Module):
         ]
 
         self.down = nn.Sequential(*sequence)
-
         self.linear = nn.Linear(ndf * 16, 1)
 
         for m in self.modules():
@@ -103,40 +100,8 @@ class Discriminator(nn.Module):
 
     def forward(self, input):
         x = self.down(input)
-        x = F.sigmoid(self.linear(x.view(-1)))
-        return x
+        return self.linear(x.view(-1))  # sigmoid in criterion "BCEWithLogitsLoss" for numerical stability
 
 
-class GANLoss(nn.Module):
-    def __init__(self, target_real_label=1.0, target_fake_label=0.0,
-                 tensor=torch.FloatTensor):
-        super(GANLoss, self).__init__()
-        self.real_label = target_real_label
-        self.fake_label = target_fake_label
-        self.real_label_var = None
-        self.fake_label_var = None
-        self.Tensor = tensor
-        self.loss = nn.MSELoss()
-
-    def get_target_tensor(self, input, target_is_real):
-        if target_is_real:
-            create_label = ((self.real_label_var is None) or
-                            (self.real_label_var.numel() != input.numel()))
-            if create_label:
-                real_tensor = self.Tensor(input.size()).fill_(self.real_label)
-                self.real_label_var = Variable(real_tensor, requires_grad=False)
-            target_tensor = self.real_label_var
-        else:
-            create_label = ((self.fake_label_var is None) or
-                            (self.fake_label_var.numel() != input.numel()))
-            if create_label:
-                fake_tensor = self.Tensor(input.size()).fill_(self.fake_label)
-                self.fake_label_var = Variable(fake_tensor, requires_grad=False)
-            target_tensor = self.fake_label_var
-        return target_tensor
-
-    def __call__(self, input, target_is_real):
-        target_tensor = self.get_target_tensor(input, target_is_real)
-        return self.loss(input, target_tensor)
 
 # TODO: discuss about affine and bias

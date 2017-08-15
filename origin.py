@@ -23,8 +23,8 @@ parser.add_argument('--cut', type=int, default=2, help='cut backup frequency')
 parser.add_argument('--niter', type=int, default=700, help='number of epochs to train for')
 parser.add_argument('--ngf', type=int, default=64)
 parser.add_argument('--ndf', type=int, default=64)
-parser.add_argument('--lrG', type=float, default=0.00005, help='learning rate, default=0.0001')
-parser.add_argument('--lrD', type=float, default=0.00005, help='learning rate, default=0.0001')
+parser.add_argument('--lrG', type=float, default=0.00005, help='learning rate, default=0.00005')
+parser.add_argument('--lrD', type=float, default=0.00005, help='learning rate, default=0.00005')
 parser.add_argument('--beta1', type=float, default=0.5, help='beta1 for adam. default=0.5')
 parser.add_argument('--cuda', action='store_true', help='enables cuda')
 parser.add_argument('--netG', default='', help="path to netG (to continue training)")
@@ -61,30 +61,32 @@ cudnn.benchmark = True
 
 viz = Visdom(env=opt.env)
 
-dataloader = CreateDataLoader(opt)
+dataloader_train, dataloader_test = CreateDataLoader(opt)
 
 netG = Pyramid()
 if opt.netG != '':
     netG.load_state_dict(torch.load(opt.netG))
 print(netG)
 
-netD = PatchD()
+netD = Discriminator()
 if opt.netD != '':
     netD.load_state_dict(torch.load(opt.netD))
 print(netD)
 
-criterion_GAN = GANLoss()
-if opt.cuda:
-    criterion_GAN = GANLoss(tensor=torch.cuda.FloatTensor)
+criterion_BCE = nn.BCEWithLogitsLoss()
 criterion_L1 = nn.L1Loss()
 criterion_L2 = nn.MSELoss()
+label = torch.FloatTensor(opt.batchSize).resize_(opt.batchSize)
+real_label = 1
+fake_label = 0
 
 if opt.cuda:
     netD.cuda()
     netG.cuda()
     criterion_L1.cuda()
     criterion_L2.cuda()
-    criterion_GAN.cuda()
+    criterion_BCE.cuda()
+    label = label.cuda()
 
 # setup optimizer
 optimizerG = optim.Adam(netG.parameters(), lr=opt.lrG, betas=(opt.beta1, 0.9))
@@ -99,9 +101,9 @@ flag4 = 1
 for epoch in range(opt.epoi, opt.niter):
     schedulerG.step()
     schedulerD.step()
-    data_iter = iter(dataloader)
+    data_iter = iter(dataloader_train)
     iter_count = 0
-    while iter_count < len(dataloader):
+    while iter_count < len(dataloader_train):
         ############################
         # (1) Update D network
         ###########################
@@ -117,7 +119,7 @@ for epoch in range(opt.epoi, opt.niter):
             Diters = 0
 
         j = 0
-        while j < Diters and iter_count < len(dataloader):
+        while j < Diters and iter_count < len(dataloader_train):
 
             j += 1
             netD.zero_grad()
@@ -133,15 +135,11 @@ for epoch in range(opt.epoi, opt.niter):
 
             fake_Vsim = netG(*list(map(lambda x: Variable(x, volatile=True), real_bim)))
 
-            errD_fake = reduce(lambda x, y: x + y,
-                               map(lambda x, y: criterion_GAN(netD(Variable(torch.cat([x.data, y], 1))),
-                                                              False), fake_Vsim, real_bim))
-            errD_fake.backward(retain_graph=True)  # backward on score on real
+            errD_fake = criterion_BCE(netD(Variable(fake_Vsim[2].data)), Variable(label.fill_(fake_label)))
+            errD_fake.backward(retain_graph=True)
 
-            errD_real = reduce(lambda x, y: x + y,
-                               map(lambda x, y: criterion_GAN(netD(Variable(torch.cat([x, y], 1))),
-                                                              True), real_sim, real_bim))
-            errD_real.backward(retain_graph=True)  # backward on score on real
+            errD_real = criterion_BCE(netD(Variable(real_sim)), Variable(label.fill_(real_label)))
+            errD_real.backward()
 
             errD = errD_real + errD_fake
 
@@ -150,7 +148,7 @@ for epoch in range(opt.epoi, opt.niter):
         ############################
         # Update G network
         ############################
-        if iter_count < len(dataloader):
+        if iter_count < len(dataloader_train):
             for p in netD.parameters():
                 p.requires_grad = False  # to avoid computation
             for p in netG.parameters():
@@ -191,7 +189,7 @@ for epoch in range(opt.epoi, opt.niter):
                 contentLoss.backward()
                 errG = contentLoss
             else:
-                errG = criterion_GAN(netD(fake[2]), True) * 0.0001
+                errG = criterion_BCE(netD(fake[2]), Variable(label.fill_(real_label))) * 0.0001
                 errG.backward(retain_graph=True)
 
                 contentLoss = reduce(lambda x, y: x + y,
@@ -206,19 +204,19 @@ for epoch in range(opt.epoi, opt.niter):
         if gen_iterations < opt.baseGeni:
             if flag2:
                 L1window = viz.line(
-                    np.array([contentLoss.data[0]/3]), np.array([gen_iterations]),
+                    np.array([contentLoss.data[0]]), np.array([gen_iterations]),
                     opts=dict(title='MSE loss toward real', caption='Gnet content loss')
                 )
                 flag2 -= 1
             else:
-                viz.line(np.array([contentLoss.data[0]/3]), np.array([gen_iterations]), update='append', win=L1window)
+                viz.line(np.array([contentLoss.data[0]]), np.array([gen_iterations]), update='append', win=L1window)
 
             print('[%d/%d][%d/%d][%d] err_G: %f'
-                  % (epoch, opt.niter, iter_count, len(dataloader), gen_iterations, contentLoss.data[0]/3))
+                  % (epoch, opt.niter, iter_count, len(dataloader_train), gen_iterations, contentLoss.data[0]))
         else:
             if flag4:
                 D1 = viz.line(
-                    np.array([errD.data[0]/3]), np.array([gen_iterations]),
+                    np.array([errD.data[0]]), np.array([gen_iterations]),
                     opts=dict(title='errD(distinguishability)', caption='total Dloss')
                 )
                 D2 = viz.line(
@@ -230,26 +228,26 @@ for epoch in range(opt.epoi, opt.niter):
                     opts=dict(title='errD_fake', caption='fake\'s mistake')
                 )
                 G1 = viz.line(
-                    np.array([errG.data[0]/3]), np.array([gen_iterations]),
+                    np.array([errG.data[0]]), np.array([gen_iterations]),
                     opts=dict(title='Gnet loss toward real', caption='Gnet loss')
                 )
                 flag4 -= 1
             if flag2:
                 L1window = viz.line(
-                    np.array([contentLoss.data[0]/3]), np.array([gen_iterations]),
+                    np.array([contentLoss.data[0]]), np.array([gen_iterations]),
                     opts=dict(title='MSE loss toward real', caption='Gnet content loss')
                 )
                 flag2 -= 1
 
-            viz.line(np.array([errD.data[0]/3]), np.array([gen_iterations]), update='append', win=D1)
+            viz.line(np.array([errD.data[0]]), np.array([gen_iterations]), update='append', win=D1)
             viz.line(np.array([errD_real.data[0]]), np.array([gen_iterations]), update='append', win=D2)
             viz.line(np.array([errD_fake.data[0]]), np.array([gen_iterations]), update='append', win=D3)
-            viz.line(np.array([errG.data[0]/3]), np.array([gen_iterations]), update='append', win=G1)
-            viz.line(np.array([contentLoss.data[0]/3]), np.array([gen_iterations]), update='append', win=L1window)
+            viz.line(np.array([errG.data[0]]), np.array([gen_iterations]), update='append', win=G1)
+            viz.line(np.array([contentLoss.data[0]]), np.array([gen_iterations]), update='append', win=L1window)
 
             print('[%d/%d][%d/%d][%d] errD: %f err_G: %f err_D_real: %f err_D_fake %f content loss %f'
-                  % (epoch, opt.niter, iter_count, len(dataloader), gen_iterations,
-                     errD.data[0]/3, errG.data[0]/3, errD_real.data[0], errD_fake.data[0], contentLoss.data[0]/3))
+                  % (epoch, opt.niter, iter_count, len(dataloader_train), gen_iterations,
+                     errD.data[0], errG.data[0], errD_real.data[0], errD_fake.data[0], contentLoss.data[0]))
 
         if gen_iterations % 100 == 0:
             fake = netG(*list(map(lambda x: Variable(x, volatile=True), fixed_blur)))
@@ -284,3 +282,4 @@ for epoch in range(opt.epoi, opt.niter):
         # TODO: PSNR SSIM
         # TODO: ceLoss
         # TODO: Model
+        # TODO: cumulate display
