@@ -104,4 +104,4 @@ class Discriminator(nn.Module):
 
 
 
-# TODO: discuss about affine and bias
+# TODO: discuss about affine and bias, and Leaky_relu
