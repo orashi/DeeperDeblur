@@ -5,6 +5,7 @@ import os
 import os.path
 import random
 
+import torch
 import torch.utils.data as data
 import torchvision.transforms as transforms
 from PIL import Image, ImageEnhance
@@ -109,12 +110,14 @@ class ImageFolder(data.Dataset):
         #############################################
 
         result = []
+        indices = [0, 1, 2]
+        random.shuffle(indices)
         for i in reversed(range(3)):
             ratio = 256 // (2 ** i)
-            result.append(self.transform(Bimg.resize((ratio, ratio), Image.BICUBIC)))
+            result.append(torch.index_select(self.transform(Bimg.resize((ratio, ratio), Image.BICUBIC)), 0, indices))
         for i in reversed(range(3)):
             ratio = 256 // (2 ** i)
-            result.append(self.transform(Simg.resize((ratio, ratio), Image.BICUBIC)))
+            result.append(torch.index_select(self.transform(Simg.resize((ratio, ratio), Image.BICUBIC)), 0, indices))
 
         return result
 
