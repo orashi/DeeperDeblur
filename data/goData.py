@@ -153,7 +153,7 @@ def CreateDataLoader(opt):
 
     Trans = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        transforms.Normalize((0.5, 0.5, 0.5), (1, 1, 1))
     ])
 
     dataset_train = ImageFolder_train(root=os.path.join(opt.dataroot, 'train'), transform=Trans)

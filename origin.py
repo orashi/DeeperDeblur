@@ -50,7 +50,7 @@ try:
     os.makedirs(opt.outf)
 except OSError:
     pass
-# random seed setup                                  # !!!!!
+# random seed setup
 print("Random Seed: ", opt.manualSeed)
 random.seed(opt.manualSeed)
 torch.manual_seed(opt.manualSeed)
@@ -180,17 +180,17 @@ for epoch in range(opt.epoi, opt.niter):
                 if flag:  # fix samples
                     for i in range(3):
                         viz.images(
-                            real_bim[i].mul(0.5).add(0.5).cpu().numpy(),
+                            real_bim[i].add(0.5).cpu().numpy(),
                             opts=dict(title='blur img', caption='level ' + str(i + 1))
                         )
                         viz.images(
-                            real_sim[i].mul(0.5).add(0.5).cpu().numpy(),
+                            real_sim[i].add(0.5).cpu().numpy(),
                             opts=dict(title='sharp img', caption='level ' + str(i + 1))
                         )
 
-                        vutils.save_image(real_bim[i].mul(0.5).add(0.5),
+                        vutils.save_image(real_bim[i].add(0.5),
                                           '%s/blur_samples' % opt.outf + str(i + 1) + '.png')
-                        vutils.save_image(real_sim[i].mul(0.5).add(0.5),
+                        vutils.save_image(real_sim[i].add(0.5),
                                           '%s/sharp_samples' % opt.outf + str(i + 1) + '.png')
                     fixed_blur = real_bim
                     flag -= 1
@@ -276,20 +276,20 @@ for epoch in range(opt.epoi, opt.niter):
                     imageW = []
                     for i in range(3):
                         imageW.append(viz.images(
-                            fake[i].data.mul(0.5).add(0.5).cpu().numpy(),
+                            fake[i].data.add(0.5).clamp(0, 1).cpu().numpy(),
                             opts=dict(title='deblur img', caption='level ' + str(i + 1))
                         ))
                     flag3 -= 1
                 else:
                     for i in range(3):
                         viz.images(
-                            fake[i].data.mul(0.5).add(0.5).cpu().numpy(),
+                            fake[i].data.add(0.5).clamp(0, 1).cpu().numpy(),
                             win=imageW[i],
                             opts=dict(title='deblur img', caption='level ' + str(i + 1))
                         )
             if gen_iterations % 1000 == 0:
                 for i in range(3):
-                    vutils.save_image(fake[i].data.mul(0.5).add(0.5),
+                    vutils.save_image(fake[i].data.add(0.5),
                                       '%s/fake_samples%d_gen_iter_%08d.png' % (opt.outf, i, gen_iterations))
 
             gen_iterations += 1
