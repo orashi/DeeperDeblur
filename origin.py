@@ -317,7 +317,10 @@ for epoch in range(opt.epoi, opt.niter):
     print("===> Avg. PSNR: {:.4f} dB".format(avg_psnr / len(dataloader_test)))
 
     # do checkpointing
-    if epoch % opt.cut == 0:
+    if opt.cut == 0:
+        torch.save(netG.state_dict(), '%s/netG_epoch_only.pth' % opt.outf)
+        torch.save(netD.state_dict(), '%s/netD_epoch_only.pth' % opt.outf)
+    elif epoch % opt.cut == 0:
         torch.save(netG.state_dict(), '%s/netG_epoch_%d.pth' % (opt.outf, epoch))
         torch.save(netD.state_dict(), '%s/netD_epoch_%d.pth' % (opt.outf, epoch))
 
