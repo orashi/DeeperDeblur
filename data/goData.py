@@ -139,8 +139,8 @@ class ImageFolder_test(data.Dataset):
         Bimg, Simg = loader(Bpath), loader(Spath)
         result = []
         for i in reversed(range(3)):
-            ratio = 256 // (2 ** i)
-            result.append(self.transform(Bimg.resize((ratio, ratio), Image.BICUBIC)))
+            result.append(
+                self.transform(Bimg.resize((Bimg.size[0] // (2 ** i), Bimg.size[1] // (2 ** i)), Image.BICUBIC)))
         result.append(self.transform(Simg))
         return result
 
@@ -162,4 +162,4 @@ def CreateDataLoader(opt):
     assert dataset_test, dataset_train
 
     return data.DataLoader(dataset_train, batch_size=opt.batchSize, shuffle=True, num_workers=int(opt.workers),
-                           drop_last=True), data.DataLoader(dataset_test, batch_size=10, num_workers=int(opt.workers))
+                           drop_last=True), data.DataLoader(dataset_test, batch_size=6, num_workers=int(opt.workers))

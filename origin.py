@@ -13,7 +13,7 @@ from torch.autograd import Variable
 from visdom import Visdom
 
 from data.goData import CreateDataLoader
-from models.origin import *
+from models.bottle import *
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataroot', required=True, help='path to dataset')
@@ -61,14 +61,6 @@ cudnn.benchmark = True
 
 
 viz = Visdom(env=opt.env)
-epoL = viz.line(
-    np.array([0]), np.array([opt.epoi]),
-    opts=dict(title='Train epoch Loss', caption='Epoch Loss')
-)
-Test = viz.line(
-    np.array([0]), np.array([opt.epoi]),
-    opts=dict(title='Test PSNR', caption='PSNR')
-)
 
 dataloader_train, dataloader_test = CreateDataLoader(opt)
 
@@ -107,6 +99,7 @@ flag = 1
 flag2 = 1
 flag3 = 1
 flag4 = 1
+flag5 = 1
 for epoch in range(opt.epoi, opt.niter):
     schedulerG.step()
     schedulerD.step()
@@ -142,12 +135,12 @@ for epoch in range(opt.epoi, opt.niter):
                 iter_count += 1
 
                 if opt.cuda:
-                    data = list(map(lambda x: x.cuda(), data))
+                    data = [x.cuda() for x in data]
                 real_bim, real_sim = data[0:3], data[3:]
 
                 # train with fake
 
-                fake_Vsim = netG(*list(map(lambda x: Variable(x, volatile=True), real_bim)))
+                fake_Vsim = netG(*[Variable(x, volatile=True) for x in real_bim])
 
                 errD_fake = criterion_BCE(netD(Variable(fake_Vsim[2].data)), Variable(label.fill_(fake_label)))
                 errD_fake.backward(retain_graph=True)
@@ -158,11 +151,11 @@ for epoch in range(opt.epoi, opt.niter):
                 errD = errD_real + errD_fake
 
                 optimizerD.step()
-
             ############################
             # Update G network
             ############################
             if iter_count < len(dataloader_train):
+
                 for p in netD.parameters():
                     p.requires_grad = False  # to avoid computation
                 for p in netG.parameters():
@@ -173,7 +166,7 @@ for epoch in range(opt.epoi, opt.niter):
                 iter_count += 1
 
                 if opt.cuda:
-                    data = list(map(lambda x: x.cuda(), data))
+                    data = [x.cuda() for x in data]
 
                 real_bim, real_sim = data[0:3], data[3:]
 
@@ -195,7 +188,7 @@ for epoch in range(opt.epoi, opt.niter):
                     fixed_blur = real_bim
                     flag -= 1
 
-                fake = netG(*list(map(lambda x: Variable(x), real_bim)))
+                fake = netG(*[Variable(x) for x in real_bim])
 
                 if gen_iterations < opt.baseGeni:
                     contentLoss = reduce(lambda x, y: x + y, map(lambda x, y: criterion_L2(x, Variable(y)), fake,
@@ -205,13 +198,17 @@ for epoch in range(opt.epoi, opt.niter):
                     epoch_iter_count += 1
                     errG = contentLoss
                 else:
+
                     errG = criterion_BCE(netD(fake[2]), Variable(label.fill_(real_label))) * 0.0001
+
                     errG.backward(retain_graph=True)
 
                     contentLoss = reduce(lambda x, y: x + y,
                                          map(lambda x, y: criterion_L2(x, Variable(y)), fake, real_sim)) / 6.0
+
                     contentLoss.backward()
-                    epoch_loss += contentLoss.data[0]  # next:average
+
+                    epoch_loss += contentLoss.data[0]
                     epoch_iter_count += 1
 
                 optimizerG.step()
@@ -219,6 +216,7 @@ for epoch in range(opt.epoi, opt.niter):
             ############################
             # (3) Report & 100 Batch checkpoint
             ############################
+
             if gen_iterations < opt.baseGeni:
                 if flag2:
                     L1window = viz.line(
@@ -270,7 +268,7 @@ for epoch in range(opt.epoi, opt.niter):
                          errD.data[0], errG.data[0], errD_real.data[0], errD_fake.data[0], contentLoss.data[0]))
 
             if gen_iterations % 100 == 0:
-                fake = netG(*list(map(lambda x: Variable(x, volatile=True), fixed_blur)))
+                fake = netG(*[Variable(x, volatile=True) for x in fixed_blur])
 
                 if flag3:
                     imageW = []
@@ -294,17 +292,27 @@ for epoch in range(opt.epoi, opt.niter):
 
             gen_iterations += 1
 
-    viz.line(np.array([epoch_loss / epoch_iter_count]), np.array([epoch]), update='append', win=epoL)
-
     avg_psnr = 0
     for batch in dataloader_test:
-        batch = list(map(lambda x: x.cuda(), batch))
+        batch = [x.cuda() for x in batch]
         input, target = batch[:3], batch[3]
 
-        prediction = netG(*list(map(lambda x: Variable(x, volatile=True), input)))
+        prediction = netG(*[Variable(x, volatile=True) for x in input])
         mse = criterion_L2(prediction[2], Variable(target))
         psnr = 10 * log10(1 / mse.data[0])
         avg_psnr += psnr
+
+    if flag5:
+        epoL = viz.line(
+            np.array([epoch_loss / epoch_iter_count]), np.array([epoch]),
+            opts=dict(title='Train epoch Loss', caption='Epoch Loss')
+        )
+        Test = viz.line(
+            np.array([avg_psnr / len(dataloader_test)]), np.array([epoch]),
+            opts=dict(title='Test PSNR', caption='PSNR')
+        )
+        flag5 -= 1
+    viz.line(np.array([epoch_loss / epoch_iter_count]), np.array([epoch]), update='append', win=epoL)
     viz.line(np.array([avg_psnr / len(dataloader_test)]), np.array([epoch]), update='append', win=Test)
     print("===> Avg. PSNR: {:.4f} dB".format(avg_psnr / len(dataloader_test)))
 
@@ -313,6 +321,5 @@ for epoch in range(opt.epoi, opt.niter):
         torch.save(netG.state_dict(), '%s/netG_epoch_%d.pth' % (opt.outf, epoch))
         torch.save(netD.state_dict(), '%s/netD_epoch_%d.pth' % (opt.outf, epoch))
 
-        # TODO: PSNR SSIM
         # TODO: max logD?
         # TODO: cumulate display

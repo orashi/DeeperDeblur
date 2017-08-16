@@ -6,12 +6,14 @@ import torch.nn.functional as F
 class ResBlock(nn.Module):  # not paper original
     def __init__(self):
         super(ResBlock, self).__init__()
-        self.conv1 = nn.Conv2d(64, 64, kernel_size=5, stride=1, padding=2)
-        self.conv2 = nn.Conv2d(64, 64, kernel_size=5, stride=1, padding=2)
+        self.conv1 = nn.Conv2d(64, 16, kernel_size=1, stride=1, padding=0)
+        self.conv2 = nn.Conv2d(16, 16, kernel_size=5, stride=1, padding=2)
+        self.conv3 = nn.Conv2d(16, 64, kernel_size=1, stride=1, padding=0)
 
     def forward(self, x):
-        out = self.conv1(x)
-        out = self.conv2(F.relu(out, True))
+        out = F.relu(self.conv1(x), True)
+        out = F.relu(self.conv2(out), True)
+        out = self.conv3(out)
         out += x
         return out
 
@@ -33,9 +35,9 @@ class Pyramid(nn.Module):
     def __init__(self):
         super(Pyramid, self).__init__()
 
-        self.tunnel1 = Tunnel(3, 19)
-        self.tunnel2 = Tunnel(6, 19)
-        self.tunnel3 = Tunnel(6, 19)
+        self.tunnel1 = Tunnel(3, 38)
+        self.tunnel2 = Tunnel(6, 38)
+        self.tunnel3 = Tunnel(6, 38)
 
         self.up2 = nn.Sequential(nn.Conv2d(3, 3 * 4, 5, 1, 2),
                                  nn.PixelShuffle(2))
@@ -100,6 +102,7 @@ class Discriminator(nn.Module):
 
     def forward(self, input):
         x = self.down(input)
-        return self.linear(x.view(-1, self.ndf * 16)).view(-1)  # sigmoid in criterion "BCEWithLogitsLoss" for numerical stability
+        return self.linear(x.view(-1, self.ndf * 16)).view(
+            -1)  # sigmoid in criterion "BCEWithLogitsLoss" for numerical stability
 
 # TODO: discuss about affine and bias, and Leaky_relu
