@@ -145,7 +145,7 @@ for epoch in range(opt.epoi, opt.niter):
                 errD_fake = criterion_GAN(netD(Variable(torch.cat([fake_Vsim[2].data, real_bim[2]], 1))), False)
                 errD_fake.backward(retain_graph=True)
 
-                errD_real = criterion_GAN(netD(Variable(torch.cat([real_sim[2].data, real_bim[2]], 1))), True)
+                errD_real = criterion_GAN(netD(Variable(torch.cat([real_sim[2], real_bim[2]], 1))), True)
                 errD_real.backward()
 
                 errD = errD_real + errD_fake
