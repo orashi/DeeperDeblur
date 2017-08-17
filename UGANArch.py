@@ -18,7 +18,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--dataroot', required=True, help='path to dataset')
 parser.add_argument('--workers', type=int, help='number of data loading workers', default=4)
 parser.add_argument('--batchSize', type=int, default=4, help='input batch size')
-parser.add_argument('--testBatch', type=int, default=4, help='input test batch size')
+parser.add_argument('--testBatch', type=int, default=10, help='input test batch size')
 parser.add_argument('--imageSize', type=int, default=256, help='the height / width of the input image to network')
 parser.add_argument('--cut', type=int, default=2, help='cut backup frequency')
 parser.add_argument('--niter', type=int, default=700, help='number of epochs to train for')
@@ -142,11 +142,15 @@ for epoch in range(opt.epoi, opt.niter):
 
                 fake_Vsim = netG(Variable(real_bim[2], volatile=True))
 
-                errD_fake = criterion_GAN(netD(Variable(torch.cat([fake_Vsim[2].data, real_bim[2]], 1))), False)
-                errD_fake.backward(retain_graph=True)
+                errD_fake = reduce(lambda x, y: 0.5 * x + y,
+                                   map(lambda x, y: criterion_GAN(netD(Variable(torch.cat([x.data, y], 1))),
+                                                                  False), fake_Vsim, real_bim))
+                errD_fake.backward(retain_graph=True)  # backward on score on real
 
-                errD_real = criterion_GAN(netD(Variable(torch.cat([real_sim[2], real_bim[2]], 1))), True)
-                errD_real.backward()
+                errD_real = reduce(lambda x, y: 0.5 * x + y,
+                                   map(lambda x, y: criterion_GAN(netD(Variable(torch.cat([x, y], 1))),
+                                                                  True), real_sim, real_bim))
+                errD_real.backward()  # backward on score on real
 
                 errD = errD_real + errD_fake
 
@@ -193,20 +197,23 @@ for epoch in range(opt.epoi, opt.niter):
 
                 if gen_iterations < opt.baseGeni:
                     contentLoss = reduce(lambda x, y: x + y,
-                                         map(lambda x, y: criterion_L2(x, Variable(y)) / 3, fake, real_sim))
+                                         map(lambda x, y: criterion_L2(x, Variable(y)), fake, real_sim)) / 3
                     contentLoss.backward()
-                    epoch_loss += contentLoss.data[0]
+                    epoch_loss += 10 * log10(1 / contentLoss.data[0])
                     epoch_iter_count += 1
                     errG = contentLoss
                 else:
-                    errG = criterion_GAN(netD(torch.cat([fake[2], Variable(real_bim[2])], 1)), True) * 0.01
+                    errG = reduce(lambda x, y: 0.5 * x + y,
+                                  map(lambda x, y: criterion_GAN(netD(torch.cat([x, Variable(y)], 1)), True) * 0.01,
+                                      fake,
+                                      real_bim))
                     errG.backward(retain_graph=True)
 
                     contentLoss = reduce(lambda x, y: x + y,
-                                         map(lambda x, y: criterion_L2(x, Variable(y)) / 3, fake, real_sim))
+                                         map(lambda x, y: criterion_L2(x, Variable(y)), fake, real_sim)) / 3
                     contentLoss.backward()
 
-                    epoch_loss += contentLoss.data[0]
+                    epoch_loss += 10 * log10(1 / contentLoss.data[0])
                     epoch_iter_count += 1
 
                 optimizerG.step()
@@ -296,7 +303,7 @@ for epoch in range(opt.epoi, opt.niter):
             batch = [x.cuda() for x in batch]
             input, target = batch[:3], batch[3]
 
-            prediction = netG(*[Variable(x, volatile=True) for x in input])
+            prediction = netG(Variable(x, volatile=True))
             mse = criterion_L2(prediction[2], Variable(target))
             psnr = 10 * log10(1 / mse.data[0])
             avg_psnr += psnr
@@ -317,7 +324,7 @@ for epoch in range(opt.epoi, opt.niter):
     if flag5:
         epoL = viz.line(
             np.array([epoch_loss / epoch_iter_count]), np.array([epoch]),
-            opts=dict(title='Train epoch Loss', caption='Epoch Loss')
+            opts=dict(title='Train epoch PSNR', caption='Epoch PSNR')
         )
         flag5 -= 1
     else:

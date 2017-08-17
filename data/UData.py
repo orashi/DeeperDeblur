@@ -137,12 +137,7 @@ class ImageFolder_test(data.Dataset):
     def __getitem__(self, index):
         Bpath, Spath = self.imgs[index]
         Bimg, Simg = loader(Bpath), loader(Spath)
-        result = []
-        for i in reversed(range(3)):
-            result.append(
-                self.transform(Bimg.resize((Bimg.size[0] // (2 ** i), Bimg.size[1] // (2 ** i)), Image.BICUBIC)))
-        result.append(self.transform(Simg))
-        return result
+        return self.transform(Bimg), self.transform(Simg)
 
     def __len__(self):
         return len(self.imgs)
