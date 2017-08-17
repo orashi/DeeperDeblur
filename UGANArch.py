@@ -101,14 +101,6 @@ flag3 = 1
 flag4 = 1
 flag5 = 1
 flag6 = 1
-avg_psnr = 0
-for batch in dataloader_test:
-    input, target = [x.cuda() for x in batch]
-    prediction = netG(Variable(input, volatile=True))
-    mse = criterion_L2(prediction[2], Variable(target))
-    psnr = 10 * log10(1 / mse.data[0])
-    avg_psnr += psnr
-avg_psnr = avg_psnr / len(dataloader_test)
 for epoch in range(opt.epoi, opt.niter):
 
     epoch_loss = 0
