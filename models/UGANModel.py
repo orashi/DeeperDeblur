@@ -2,16 +2,13 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
-from torch.nn import init
 
 
 class ResBlock(nn.Module):
     def __init__(self):
         super(ResBlock, self).__init__()
         self.conv1 = nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1)
-        self.norm1 = nn.InstanceNorm2d(64)
         self.conv2 = nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1)
-        self.norm2 = nn.InstanceNorm2d(64)
 
     def forward(self, x):
         out = self.conv1(F.relu(self.norm1(x), True))
@@ -55,13 +52,8 @@ class Pyramid(nn.Module):
         self.tunnel1 = nn.Sequential(nn.Conv2d(128, 64, 5, 1, 2, bias=False),
                                      Tunnel(16))
 
-        self.exit = nn.Sequential(nn.Conv2d(64, 3, kernel_size=3, stride=1, padding=1),
-                                  nn.Tanh())
+        self.exit = nn.Conv2d(64, 3, kernel_size=3, stride=1, padding=1)
 
-        for m in self.modules():  # init
-            classname = m.__class__.__name__
-            if classname.find('Conv2d') != -1:
-                m.weight.data = init.kaiming_normal(m.weight.data)
 
     def forward(self, bimg):
         lv1 = self.entrance1(bimg)
@@ -80,7 +72,7 @@ class Pyramid(nn.Module):
 
 
 class PatchD(nn.Module):
-    def __init__(self, ndf=64, norm_layer=nn.InstanceNorm2d):
+    def __init__(self, ndf=64):
         super(PatchD, self).__init__()
 
         sequence = [
@@ -91,32 +83,23 @@ class PatchD(nn.Module):
         sequence += [
             nn.Conv2d(ndf * 1, ndf * 2,
                       kernel_size=4, stride=2, padding=1),
-            norm_layer(ndf * 2),
             nn.LeakyReLU(0.2, True)
         ]
 
         sequence += [
             nn.Conv2d(ndf * 2, ndf * 4,
                       kernel_size=4, stride=2, padding=1),
-            norm_layer(ndf * 4),
             nn.LeakyReLU(0.2, True)
         ]
 
         sequence += [
             nn.Conv2d(ndf * 4, ndf * 8,
                       kernel_size=4, stride=1, padding=1),  # stride 1
-            norm_layer(ndf * 8),
             nn.LeakyReLU(0.2, True),
             nn.Conv2d(ndf * 8, 1, kernel_size=4, stride=1, padding=1)
         ]
         self.model = nn.Sequential(*sequence)
 
-        for m in self.modules():
-            classname = m.__class__.__name__
-            if classname.find('Conv') != -1:
-                m.weight.data = init.kaiming_normal(m.weight.data, a=0.2)
-            elif classname.find('Linear') != -1:
-                m.weight.data = init.kaiming_normal(m.weight.data, a=0.2)
 
     def forward(self, input):
         return self.model(input)

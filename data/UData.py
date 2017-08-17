@@ -5,6 +5,7 @@ import os
 import os.path
 import random
 
+import torch
 import torch.utils.data as data
 import torchvision.transforms as transforms
 from PIL import Image, ImageEnhance
@@ -72,13 +73,11 @@ def make_dataset(dir):
     return images
 
 
-# TODO: abandon gamma
-
 def loader(path):
     return Image.open(path).convert('RGB')
 
 
-class ImageFolder(data.Dataset):
+class ImageFolder_train(data.Dataset):
     def __init__(self, root, transform=None):  # , option=None):
         imgs = make_dataset(root)
         if len(imgs) == 0:
@@ -86,7 +85,6 @@ class ImageFolder(data.Dataset):
 
         self.imgs = imgs
         self.transform = transform
-        # self.opt = option
 
     def __getitem__(self, index):
         Bpath, Spath = self.imgs[index]
@@ -106,16 +104,44 @@ class ImageFolder(data.Dataset):
         Bimg, Simg = ImageEnhance.Color(Bimg).enhance(satRatio), ImageEnhance.Color(Simg).enhance(satRatio)
 
         # TODO: random noise & beyond 256 support
+        # TODO: discuss: gaussian pyramid?
+
         #############################################
 
         result = []
+        indices = [0, 1, 2]
+        random.shuffle(indices)
+        indices = torch.LongTensor(indices)
         for i in reversed(range(3)):
             ratio = 256 // (2 ** i)
-            result.append(self.transform(Bimg.resize((ratio, ratio), Image.BICUBIC)))
+            result.append(torch.index_select(self.transform(Bimg.resize((ratio, ratio), Image.BICUBIC)), 0, indices))
         for i in reversed(range(3)):
             ratio = 256 // (2 ** i)
-            result.append(self.transform(Simg.resize((ratio, ratio), Image.BICUBIC)))
+            result.append(torch.index_select(self.transform(Simg.resize((ratio, ratio), Image.BICUBIC)), 0, indices))
 
+        return result
+
+    def __len__(self):
+        return len(self.imgs)
+
+
+class ImageFolder_test(data.Dataset):
+    def __init__(self, root, transform=None):  # , option=None):
+        imgs = make_dataset(root)
+        if len(imgs) == 0:
+            raise (RuntimeError("Found 0 images in folders."))
+
+        self.imgs = imgs
+        self.transform = transform
+
+    def __getitem__(self, index):
+        Bpath, Spath = self.imgs[index]
+        Bimg, Simg = loader(Bpath), loader(Spath)
+        result = []
+        for i in reversed(range(3)):
+            result.append(
+                self.transform(Bimg.resize((Bimg.size[0] // (2 ** i), Bimg.size[1] // (2 ** i)), Image.BICUBIC)))
+        result.append(self.transform(Simg))
         return result
 
     def __len__(self):
@@ -130,9 +156,11 @@ def CreateDataLoader(opt):
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
 
-    dataset = ImageFolder(root=opt.dataroot, transform=Trans)
+    dataset_train = ImageFolder_train(root=os.path.join(opt.dataroot, 'train'), transform=Trans)
+    dataset_test = ImageFolder_test(root=os.path.join(opt.dataroot, 'test'), transform=Trans)
 
-    assert dataset
+    assert dataset_test, dataset_train
 
-    return data.DataLoader(dataset, batch_size=opt.batchSize,
-                           shuffle=True, num_workers=int(opt.workers), drop_last=True)
+    return data.DataLoader(dataset_train, batch_size=opt.batchSize, shuffle=True, num_workers=int(opt.workers),
+                           drop_last=True), data.DataLoader(dataset_test, batch_size=opt.testBatch,
+                                                            num_workers=int(opt.workers))

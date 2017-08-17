@@ -19,6 +19,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--dataroot', required=True, help='path to dataset')
 parser.add_argument('--workers', type=int, help='number of data loading workers', default=4)
 parser.add_argument('--batchSize', type=int, default=4, help='input batch size')
+parser.add_argument('--testBatch', type=int, default=4, help='input test batch size')
 parser.add_argument('--imageSize', type=int, default=256, help='the height / width of the input image to network')
 parser.add_argument('--cut', type=int, default=2, help='cut backup frequency')
 parser.add_argument('--niter', type=int, default=700, help='number of epochs to train for')
@@ -26,7 +27,7 @@ parser.add_argument('--ngf', type=int, default=64)
 parser.add_argument('--ndf', type=int, default=64)
 parser.add_argument('--lrG', type=float, default=0.00005, help='learning rate, default=0.00005')
 parser.add_argument('--lrD', type=float, default=0.00005, help='learning rate, default=0.00005')
-parser.add_argument('--beta1', type=float, default=0.5, help='beta1 for adam. default=0.5')
+parser.add_argument('--beta1', type=float, default=0.9, help='beta1 for adam. default=0.9')
 parser.add_argument('--cuda', action='store_true', help='enables cuda')
 parser.add_argument('--netG', default='', help="path to netG (to continue training)")
 parser.add_argument('--netD', default='', help="path to netD (to continue training)")
@@ -100,6 +101,7 @@ flag2 = 1
 flag3 = 1
 flag4 = 1
 flag5 = 1
+flag6 = 1
 for epoch in range(opt.epoi, opt.niter):
     schedulerG.step()
     schedulerD.step()
@@ -292,29 +294,34 @@ for epoch in range(opt.epoi, opt.niter):
 
             gen_iterations += 1
 
-    avg_psnr = 0
-    for batch in dataloader_test:
-        batch = [x.cuda() for x in batch]
-        input, target = batch[:3], batch[3]
+    if epoch % 5 == 0:
+        avg_psnr = 0
+        for batch in dataloader_test:
+            batch = [x.cuda() for x in batch]
+            input, target = batch[:3], batch[3]
 
-        prediction = netG(*[Variable(x, volatile=True) for x in input])
-        mse = criterion_L2(prediction[2], Variable(target))
-        psnr = 10 * log10(1 / mse.data[0])
-        avg_psnr += psnr
+            prediction = netG(*[Variable(x, volatile=True) for x in input])
+            mse = criterion_L2(prediction[2], Variable(target))
+            psnr = 10 * log10(1 / mse.data[0])
+            avg_psnr += psnr
+        if flag6:
+            Test = viz.line(
+                np.array([avg_psnr / len(dataloader_test)]), np.array([epoch]),
+                opts=dict(title='Test PSNR', caption='PSNR')
+            )
+            flag6 -= 1
+        else:
+            viz.line(np.array([avg_psnr / len(dataloader_test)]), np.array([epoch]), update='append', win=Test)
+        print("===> Avg. PSNR: {:.4f} dB".format(avg_psnr / len(dataloader_test)))
 
     if flag5:
         epoL = viz.line(
             np.array([epoch_loss / epoch_iter_count]), np.array([epoch]),
             opts=dict(title='Train epoch Loss', caption='Epoch Loss')
         )
-        Test = viz.line(
-            np.array([avg_psnr / len(dataloader_test)]), np.array([epoch]),
-            opts=dict(title='Test PSNR', caption='PSNR')
-        )
         flag5 -= 1
-    viz.line(np.array([epoch_loss / epoch_iter_count]), np.array([epoch]), update='append', win=epoL)
-    viz.line(np.array([avg_psnr / len(dataloader_test)]), np.array([epoch]), update='append', win=Test)
-    print("===> Avg. PSNR: {:.4f} dB".format(avg_psnr / len(dataloader_test)))
+    else:
+        viz.line(np.array([epoch_loss / epoch_iter_count]), np.array([epoch]), update='append', win=epoL)
 
     # do checkpointing
     if opt.cut == 0:

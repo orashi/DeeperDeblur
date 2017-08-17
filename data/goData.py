@@ -66,9 +66,9 @@ def make_dataset(dir):
     images = []
     for bag in sorted(os.listdir(dir)):
         root = os.path.join(dir, bag)
-        for fname in sorted(os.listdir(os.path.join(root, 'blur'))):
+        for fname in sorted(os.listdir(os.path.join(root, 'blur_gamma'))):
             if is_image_file(fname):
-                Bpath, Spath = os.path.join(root, 'blur', fname), os.path.join(root, 'sharp', fname)
+                Bpath, Spath = os.path.join(root, 'blur_gamma', fname), os.path.join(root, 'sharp', fname)
                 images.append((Bpath, Spath))
     return images
 
@@ -162,4 +162,5 @@ def CreateDataLoader(opt):
     assert dataset_test, dataset_train
 
     return data.DataLoader(dataset_train, batch_size=opt.batchSize, shuffle=True, num_workers=int(opt.workers),
-                           drop_last=True), data.DataLoader(dataset_test, batch_size=6, num_workers=int(opt.workers))
+                           drop_last=True), data.DataLoader(dataset_test, batch_size=opt.testBatch,
+                                                            num_workers=int(opt.workers))
