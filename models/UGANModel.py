@@ -11,15 +11,15 @@ class ResBlock(nn.Module):
         self.conv2 = nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1)
 
     def forward(self, x):
-        out = self.conv1(F.relu(self.norm1(x), True))
-        out = self.conv2(F.relu(self.norm2(out), True))
+        out = self.conv1(F.relu(x, True))
+        out = self.conv2(F.relu(out, True))
 
         out += x
         return out
 
 
 class Tunnel(nn.Module):
-    def __init__(self, len=16):
+    def __init__(self, len=1):
         super(Tunnel, self).__init__()
 
         tunnel = [ResBlock() for _ in range(len)]
@@ -46,11 +46,11 @@ class Pyramid(nn.Module):
                                  nn.PixelShuffle(2),
                                  nn.ReLU(inplace=True))
 
-        self.tunnel3 = nn.Sequential(Tunnel(16))
+        self.tunnel3 = nn.Sequential(Tunnel(36))
         self.tunnel2 = nn.Sequential(nn.Conv2d(128, 64, 5, 1, 2, bias=False),
                                      Tunnel(16))
         self.tunnel1 = nn.Sequential(nn.Conv2d(128, 64, 5, 1, 2, bias=False),
-                                     Tunnel(16))
+                                     Tunnel(7))
 
         self.exit = nn.Conv2d(64, 3, kernel_size=3, stride=1, padding=1)
 

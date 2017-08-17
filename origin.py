@@ -332,4 +332,3 @@ for epoch in range(opt.epoi, opt.niter):
         torch.save(netD.state_dict(), '%s/netD_epoch_%d.pth' % (opt.outf, epoch))
 
         # TODO: max logD?
-        # TODO: cumulate display
