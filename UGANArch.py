@@ -204,7 +204,7 @@ for epoch in range(opt.epoi, opt.niter):
                     errG = contentLoss
                 else:
                     errG = reduce(lambda x, y: 0.5 * x + y,
-                                  map(lambda x, y: criterion_GAN(netD(torch.cat([x, Variable(y)], 1)), True) * 0.01,
+                                  map(lambda x, y: criterion_GAN(netD(torch.cat([x, Variable(y)], 1)), True) * 0.0001,
                                       fake,
                                       real_bim))
                     errG.backward(retain_graph=True)
