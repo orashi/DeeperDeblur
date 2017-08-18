@@ -197,7 +197,7 @@ for epoch in range(opt.epoi, opt.niter):
 
                 if gen_iterations < opt.baseGeni:
                     contentLoss = reduce(lambda x, y: x + y,
-                                         map(lambda x, y: criterion_L2(x, Variable(y)), fake, real_sim)) / 3
+                                         map(lambda x, y: criterion_L2(x.mul(0.5).add(0.5), Variable(y.mul(0.5).add(0.5))), fake, real_sim)) / 3
                     contentLoss.backward()
                     epoch_loss += 10 * log10(1 / contentLoss.data[0])
                     epoch_iter_count += 1
@@ -210,7 +210,7 @@ for epoch in range(opt.epoi, opt.niter):
                     errG.backward(retain_graph=True)
 
                     contentLoss = reduce(lambda x, y: x + y,
-                                         map(lambda x, y: criterion_L2(x, Variable(y)), fake, real_sim)) / 3
+                                         map(lambda x, y: criterion_L2(x.mul(0.5).add(0.5), Variable(y.mul(0.5).add(0.5))), fake, real_sim)) / 3
                     contentLoss.backward()
 
                     epoch_loss += 10 * log10(1 / contentLoss.data[0])
@@ -302,7 +302,7 @@ for epoch in range(opt.epoi, opt.niter):
         for batch in dataloader_test:
             input, target = [x.cuda() for x in batch]
             prediction = netG(Variable(input, volatile=True))
-            mse = criterion_L2(prediction[2], Variable(target))
+            mse = criterion_L2(prediction[2].mul(0.5).add(0.5), Variable(target.mul(0.5).add(0.5)))
             psnr = 10 * log10(1 / mse.data[0])
             avg_psnr += psnr
         avg_psnr = avg_psnr / len(dataloader_test)
