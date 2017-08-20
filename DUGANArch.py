@@ -18,6 +18,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--dataroot', required=True, help='path to dataset')
 parser.add_argument('--workers', type=int, help='number of data loading workers', default=4)
 parser.add_argument('--batchSize', type=int, default=4, help='input batch size')
+parser.add_argument('--test', type=bool, default=False, help='test option')
 parser.add_argument('--testBatch', type=int, default=10, help='input test batch size')
 parser.add_argument('--imageSize', type=int, default=256, help='the height / width of the input image to network')
 parser.add_argument('--cut', type=int, default=2, help='cut backup frequency')
@@ -91,9 +92,9 @@ if opt.cuda:
 optimizerG = optim.Adam(netG.parameters(), lr=opt.lrG, betas=(opt.beta1, 0.9))
 optimizerD = optim.Adam(netD.parameters(), lr=opt.lrD, betas=(opt.beta1, 0.9))
 schedulerG = lr_scheduler.ReduceLROnPlateau(optimizerG, mode='max', verbose=True, min_lr=0.000005,
-                                            patience=5)  # 1.5*10^5 iter
+                                            patience=10)  # 1.5*10^5 iter
 schedulerD = lr_scheduler.ReduceLROnPlateau(optimizerD, mode='max', verbose=True, min_lr=0.000005,
-                                            patience=5)  # 1.5*10^5 iter
+                                            patience=10)  # 1.5*10^5 iter
 
 flag = 1
 flag2 = 1
@@ -196,11 +197,15 @@ for epoch in range(opt.epoi, opt.niter):
                 fake = netG(Variable(real_bim[2]))
 
                 if gen_iterations < opt.baseGeni:
-                    contentLoss = reduce(lambda x, y: x + y,
-                                         map(lambda x, y: criterion_L2(x.mul(0.5).add(0.5), Variable(y.mul(0.5).add(0.5))), fake, real_sim)) / 3
-                    contentLoss.backward()
+                    contentLoss = criterion_L2(fake[2].mul(0.5).add(0.5), Variable(real_sim[2].mul(0.5).add(0.5)))
                     epoch_loss += 10 * log10(1 / contentLoss.data[0])
                     epoch_iter_count += 1
+
+                    contentLoss += criterion_L2(fake[1].mul(0.5).add(0.5), Variable(real_sim[1].mul(0.5).add(0.5)))
+                    contentLoss += criterion_L2(fake[0].mul(0.5).add(0.5), Variable(real_sim[0].mul(0.5).add(0.5)))
+                    contentLoss /= 3.0
+
+                    contentLoss.backward()
                     errG = contentLoss
                 else:
                     errG = reduce(lambda x, y: 0.5 * x + y,
@@ -209,12 +214,15 @@ for epoch in range(opt.epoi, opt.niter):
                                       real_bim))
                     errG.backward(retain_graph=True)
 
-                    contentLoss = reduce(lambda x, y: x + y,
-                                         map(lambda x, y: criterion_L2(x.mul(0.5).add(0.5), Variable(y.mul(0.5).add(0.5))), fake, real_sim)) / 3
-                    contentLoss.backward()
-
+                    contentLoss = criterion_L2(fake[2].mul(0.5).add(0.5), Variable(real_sim[2].mul(0.5).add(0.5)))
                     epoch_loss += 10 * log10(1 / contentLoss.data[0])
                     epoch_iter_count += 1
+
+                    contentLoss += criterion_L2(fake[1].mul(0.5).add(0.5), Variable(real_sim[1].mul(0.5).add(0.5)))
+                    contentLoss += criterion_L2(fake[0].mul(0.5).add(0.5), Variable(real_sim[0].mul(0.5).add(0.5)))
+                    contentLoss /= 3.0
+
+                    contentLoss.backward()
 
                 optimizerG.step()
 
@@ -297,36 +305,41 @@ for epoch in range(opt.epoi, opt.niter):
 
             gen_iterations += 1
 
-    if epoch % 5 == 0:
-        avg_psnr = 0
-        for batch in dataloader_test:
-            input, target = [x.cuda() for x in batch]
-            prediction = netG(Variable(input, volatile=True))
-            mse = criterion_L2(prediction[2].mul(0.5).add(0.5), Variable(target.mul(0.5).add(0.5)))
-            psnr = 10 * log10(1 / mse.data[0])
-            avg_psnr += psnr
-        avg_psnr = avg_psnr / len(dataloader_test)
+    if opt.test:
+        if epoch % 5 == 0:
+            avg_psnr = 0
+            for batch in dataloader_test:
+                input, target = [x.cuda() for x in batch]
+                prediction = netG(Variable(input, volatile=True))
+                mse = criterion_L2(prediction[2].mul(0.5).add(0.5), Variable(target.mul(0.5).add(0.5)))
+                psnr = 10 * log10(1 / mse.data[0])
+                avg_psnr += psnr
+            avg_psnr = avg_psnr / len(dataloader_test)
 
-        if flag6:
-            Test = viz.line(
-                np.array([avg_psnr]), np.array([epoch]),
-                opts=dict(title='Test PSNR', caption='PSNR')
-            )
-            flag6 -= 1
-        else:
-            viz.line(np.array([avg_psnr]), np.array([epoch]), update='append', win=Test)
-        print("===> Avg. PSNR: {:.4f} dB".format(avg_psnr))
-        schedulerG.step(avg_psnr)
-        schedulerD.step(avg_psnr)
+            if flag6:
+                Test = viz.line(
+                    np.array([avg_psnr]), np.array([epoch]),
+                    opts=dict(title='Test PSNR', caption='PSNR')
+                )
+                flag6 -= 1
+            else:
+                viz.line(np.array([avg_psnr]), np.array([epoch]), update='append', win=Test)
+            print("===> Avg. PSNR: {:.4f} dB".format(avg_psnr))
 
+    avg_psnr = epoch_loss / epoch_iter_count
     if flag5:
+
         epoL = viz.line(
-            np.array([epoch_loss / epoch_iter_count]), np.array([epoch]),
+            np.array([avg_psnr]), np.array([epoch]),
             opts=dict(title='Train epoch PSNR', caption='Epoch PSNR')
         )
         flag5 -= 1
+        schedulerG.step(avg_psnr)
+        schedulerD.step(avg_psnr)
     else:
-        viz.line(np.array([epoch_loss / epoch_iter_count]), np.array([epoch]), update='append', win=epoL)
+        viz.line(np.array([avg_psnr]), np.array([epoch]), update='append', win=epoL)
+        schedulerG.step(avg_psnr)
+        schedulerD.step(avg_psnr)
 
     # do checkpointing
     if opt.cut == 0:
