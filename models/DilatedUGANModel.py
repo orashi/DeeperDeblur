@@ -55,14 +55,14 @@ class DilateTunnel(nn.Module):
     def forward(self, x):
         return self.tunnel(x)
 
+class DilateTunnel2(nn.Module):
+    def __init__(self, depth=2):
+        super(DilateTunnel2, self).__init__()
 
-class TransposedDilateTunnel(nn.Module):
-    def __init__(self, depth=3):
-        super(TransposedDilateTunnel, self).__init__()
-
-        tunnel = [ResBlock(4) for _ in range(depth)]
+        tunnel = [ResBlock(1) for _ in range(depth)]
         tunnel += [ResBlock(2) for _ in range(depth)]
-        tunnel += [ResBlock(1) for _ in range(depth)]
+        tunnel += [ResBlock(4) for _ in range(depth)]
+        tunnel += [ResBlock(8) for _ in range(depth)]
         tunnel += [Block(2), Block(1)]
         self.tunnel = nn.Sequential(*tunnel)
 
@@ -91,7 +91,7 @@ class Pyramid(nn.Module):
         self.tunnel2 = nn.Sequential(nn.Conv2d(128, 64, 5, 1, 2, bias=False),
                                      DilateTunnel(3))
         self.tunnel1 = nn.Sequential(nn.Conv2d(128, 64, 5, 1, 2, bias=False),
-                                     DilateTunnel(4))
+                                     DilateTunnel2(2))
 
         self.exit = nn.Conv2d(64, 3, kernel_size=3, stride=1, padding=1)
 
