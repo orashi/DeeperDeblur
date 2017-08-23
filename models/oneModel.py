@@ -4,6 +4,21 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 
 
+class BottleBlock(nn.Module):  # not paper original
+    def __init__(self):
+        super(BottleBlock, self).__init__()
+        self.conv1 = nn.Conv2d(192, 64, kernel_size=1, stride=1, padding=0)
+        self.conv2 = nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1)
+        self.conv3 = nn.Conv2d(64, 192, kernel_size=1, stride=1, padding=0)
+
+    def forward(self, x):
+        out = self.conv1(F.relu(x, False))
+        out = self.conv2(F.relu(out, True))
+        out = self.conv3(F.relu(out, True))
+        out += x
+        return out
+
+
 class ResBlock(nn.Module):
     def __init__(self, Dilation=1):
         super(ResBlock, self).__init__()
@@ -11,7 +26,7 @@ class ResBlock(nn.Module):
         self.conv2 = nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=Dilation, dilation=Dilation)
 
     def forward(self, x):
-        out = self.conv1(F.relu(x, True))
+        out = self.conv1(F.relu(x, False))
         out = self.conv2(F.relu(out, True))
 
         out += x
@@ -25,25 +40,25 @@ class Block(nn.Module):
         self.conv2 = nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=Dilation, dilation=Dilation)
 
     def forward(self, x):
-        out = self.conv1(F.relu(x, True))
+        out = self.conv1(F.relu(x, False))
         out = self.conv2(F.relu(out, True))
 
         return out
 
 
 class Tunnel(nn.Module):
-    def __init__(self, len=1):
+    def __init__(self, len=1, block=ResBlock):
         super(Tunnel, self).__init__()
 
-        tunnel = [ResBlock() for _ in range(len)]
+        tunnel = [block() for _ in range(len)]
         self.tunnel = nn.Sequential(*tunnel)
 
     def forward(self, x):
         return self.tunnel(x)
 
-4
+
 class DilateTunnel(nn.Module):
-    def __init__(self, depth=3):
+    def __init__(self, depth=2):
         super(DilateTunnel, self).__init__()
 
         tunnel = [ResBlock(1) for _ in range(depth)]
@@ -55,15 +70,15 @@ class DilateTunnel(nn.Module):
     def forward(self, x):
         return self.tunnel(x)
 
+
 class DilateTunnel2(nn.Module):
     def __init__(self, depth=2):
         super(DilateTunnel2, self).__init__()
 
-        tunnel = [ResBlock(1) for _ in range(depth)]
+        tunnel = [ResBlock(4) for _ in range(depth)]
         tunnel += [ResBlock(2) for _ in range(depth)]
-        tunnel += [ResBlock(4) for _ in range(depth)]
-        tunnel += [ResBlock(8) for _ in range(depth)]
-        tunnel += [Block(2), Block(1)]
+        tunnel += [ResBlock(1) for _ in range(depth)]
+        tunnel += [Block(1), Block(1)]
         self.tunnel = nn.Sequential(*tunnel)
 
     def forward(self, x):
@@ -74,45 +89,23 @@ class Pyramid(nn.Module):
     def __init__(self):
         super(Pyramid, self).__init__()
 
-        self.entrance1 = nn.Sequential(nn.Conv2d(3, 64, kernel_size=5, stride=1, padding=2),
-                                       nn.ReLU(inplace=True))
-        self.entrance2 = nn.Sequential(nn.Conv2d(64, 64, kernel_size=4, stride=2, padding=1),
-                                       nn.ReLU(inplace=True))
-        self.entrance3 = nn.Conv2d(64, 64, kernel_size=4, stride=2, padding=1)
+        self.entrance = nn.Conv2d(3, 64, kernel_size=5, stride=1, padding=2)
 
-        self.up3 = nn.Sequential(nn.Conv2d(64, 64 * 4, 3, 1, 1, bias=False),
-                                 nn.PixelShuffle(2),
-                                 nn.ReLU(inplace=True))
-        self.up2 = nn.Sequential(nn.Conv2d(64, 64 * 4, 3, 1, 1, bias=False),
-                                 nn.PixelShuffle(2),
-                                 nn.ReLU(inplace=True))
+        self.tunnel1 = Tunnel(4)
+        self.tunnel2 = DilateTunnel()
+        self.tunnel3 = DilateTunnel2()
 
-        self.tunnel3 = nn.Sequential(Tunnel(20))
-        self.tunnel2 = nn.Sequential(nn.Conv2d(128, 64, 5, 1, 2, bias=False),
-                                     DilateTunnel(3))
-        self.tunnel1 = nn.Sequential(nn.Conv2d(128, 64, 5, 1, 2, bias=False),
-                                     DilateTunnel2(2))
-
-        self.exit = nn.Conv2d(64, 3, kernel_size=3, stride=1, padding=1)
+        self.exit = nn.Sequential(Tunnel(10, block=BottleBlock),
+                                  nn.Conv2d(192, 3, kernel_size=3, stride=1, padding=1))
 
     def forward(self, bimg):
-        lv1 = self.entrance1(bimg)
-        lv2 = self.entrance2(lv1)
-        lv3 = self.entrance3(lv2)  # need discussion
+        bimg = self.entrance(bimg)
 
-        results = []
-        lv3 = self.tunnel3(lv3)
-        results.append(self.exit(lv3))
+        out1 = self.tunnel1(bimg)
+        out2 = self.tunnel2(bimg)
+        out3 = self.tunnel3(bimg)
 
-        up3 = self.up3(lv3)
-        lv2 = self.tunnel2(torch.cat([up3, lv2.detach()], 1)) + up3
-        results.append(self.exit(lv2))
-
-        up2 = self.up2(lv2)
-        lv1 = self.tunnel1(torch.cat([up2, lv1.detach()], 1)) + up2
-        results.append(self.exit(lv1))
-
-        return results
+        return self.exit(torch.cat([out1, out2, out3], 1))
 
 
 class PatchD(nn.Module):

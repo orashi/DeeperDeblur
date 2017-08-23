@@ -1,7 +1,6 @@
 import argparse
 import os
 import random
-from functools import reduce
 from math import log10
 
 import numpy as np
@@ -11,16 +10,15 @@ import torch.optim.lr_scheduler as lr_scheduler
 import torchvision.utils as vutils
 from visdom import Visdom
 
-from data.UData import CreateDataLoader
-from models.DilatedUGANModel import *
+from data.oneData import CreateDataLoader
+from models.oneModel import *
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataroot', required=True, help='path to dataset')
 parser.add_argument('--workers', type=int, help='number of data loading workers', default=4)
 parser.add_argument('--batchSize', type=int, default=4, help='input batch size')
 parser.add_argument('--test', type=bool, default=False, help='test option')
-parser.add_argument('--testBatch', type=int, default=10, help='input test batch size')
-parser.add_argument('--imageSize', type=int, default=256, help='the height / width of the input image to network')
+parser.add_argument('--testBatch', type=int, default=4, help='input test batch size')
 parser.add_argument('--cut', type=int, default=2, help='cut backup frequency')
 parser.add_argument('--niter', type=int, default=700, help='number of epochs to train for')
 parser.add_argument('--ngf', type=int, default=64)
@@ -35,6 +33,7 @@ parser.add_argument('--outf', default='.', help='folder to output images and mod
 parser.add_argument('--Diters', type=int, default=1, help='number of D iters per each G iter')
 parser.add_argument('--manualSeed', type=int, default=2345, help='random seed to use. Default=1234')
 parser.add_argument('--baseGeni', type=int, default=0, help='start base of pure pair L1 loss')
+parser.add_argument('--adv', type=bool, default=False, help='adversarial training option')
 parser.add_argument('--geni', type=int, default=0, help='continue gen image num')
 parser.add_argument('--epoi', type=int, default=0, help='continue epoch num')
 parser.add_argument('--env', type=str, default='main', help='visdom env')
@@ -123,7 +122,7 @@ for epoch in range(opt.epoi, opt.niter):
             # train the discriminator Diters times
             Diters = opt.Diters
 
-            if gen_iterations < opt.baseGeni:  # L1 stage
+            if gen_iterations < opt.baseGeni or not opt.adv:  # L1 stage
                 Diters = 0
 
             j = 0
@@ -132,25 +131,20 @@ for epoch in range(opt.epoi, opt.niter):
                 j += 1
                 netD.zero_grad()
 
-                data = data_iter.next()
+                real_bim, real_sim = data_iter.next()
                 iter_count += 1
 
                 if opt.cuda:
-                    data = [x.cuda() for x in data]
-                real_bim, real_sim = data[0:3], data[3:]
+                    real_bim, real_sim = real_bim.cuda(), real_sim.cuda()
 
                 # train with fake
 
-                fake_Vsim = netG(Variable(real_bim[2], volatile=True))
+                fake_Vsim = netG(Variable(real_bim, volatile=True))
 
-                errD_fake = reduce(lambda x, y: 0.5 * x + y,
-                                   map(lambda x, y: criterion_GAN(netD(Variable(torch.cat([x.data, y], 1))),
-                                                                  False), fake_Vsim, real_bim))
+                errD_fake = criterion_GAN(netD(Variable(torch.cat([fake_Vsim.data, real_bim], 1))), False)
                 errD_fake.backward(retain_graph=True)  # backward on score on real
 
-                errD_real = reduce(lambda x, y: 0.5 * x + y,
-                                   map(lambda x, y: criterion_GAN(netD(Variable(torch.cat([x, y], 1))),
-                                                                  True), real_sim, real_bim))
+                errD_real = criterion_GAN(netD(Variable(torch.cat([real_sim, real_bim], 1))), True)
                 errD_real.backward()  # backward on score on real
 
                 errD = errD_real + errD_fake
@@ -167,62 +161,51 @@ for epoch in range(opt.epoi, opt.niter):
                     p.requires_grad = True  # to avoid computation
                 netG.zero_grad()
 
-                data = data_iter.next()
+                real_bim, real_sim = data_iter.next()
                 iter_count += 1
 
                 if opt.cuda:
-                    data = [x.cuda() for x in data]
-
-                real_bim, real_sim = data[0:3], data[3:]
+                    real_bim, real_sim = real_bim.cuda(), real_sim.cuda()
 
                 if flag:  # fix samples
-                    for i in range(3):
-                        viz.images(
-                            real_bim[i].mul(0.5).add(0.5).cpu().numpy(),
-                            opts=dict(title='blur img', caption='level ' + str(i + 1))
-                        )
-                        viz.images(
-                            real_sim[i].mul(0.5).add(0.5).cpu().numpy(),
-                            opts=dict(title='sharp img', caption='level ' + str(i + 1))
-                        )
+                    viz.images(
+                        real_bim.mul(0.5).add(0.5).cpu().numpy(),
+                        opts=dict(title='blur img', caption='level 0')
+                    )
+                    viz.images(
+                        real_sim.mul(0.5).add(0.5).cpu().numpy(),
+                        opts=dict(title='sharp img', caption='level 0')
+                    )
 
-                        vutils.save_image(real_bim[i].mul(0.5).add(0.5),
-                                          '%s/blur_samples' % opt.outf + str(i + 1) + '.png')
-                        vutils.save_image(real_sim[i].mul(0.5).add(0.5),
-                                          '%s/sharp_samples' % opt.outf + str(i + 1) + '.png')
+                    vutils.save_image(real_bim.mul(0.5).add(0.5),
+                                      '%s/blur_samples' % opt.outf + '.png')
+                    vutils.save_image(real_sim.mul(0.5).add(0.5),
+                                      '%s/sharp_samples' % opt.outf + '.png')
 
-                    fixed_blur = real_bim[2]
+                    fixed_blur = real_bim
                     flag -= 1
 
-                fake = netG(Variable(real_bim[2]))
+                fake = netG(Variable(real_bim))
 
-                if gen_iterations < opt.baseGeni:
-                    contentLoss = criterion_L2(fake[2].mul(0.5).add(0.5), Variable(real_sim[2].mul(0.5).add(0.5)))
-                    epoch_loss += 10 * log10(1 / contentLoss.data[0])
-                    epoch_iter_count += 1
-
-                    contentLoss += criterion_L2(fake[1].mul(0.5).add(0.5), Variable(real_sim[1].mul(0.5).add(0.5)))
-                    contentLoss += criterion_L2(fake[0].mul(0.5).add(0.5), Variable(real_sim[0].mul(0.5).add(0.5)))
-                    contentLoss /= 3.0
-
+                if gen_iterations < opt.baseGeni or not opt.adv:
+                    contentLoss = criterion_L1(fake, Variable(real_sim))
                     contentLoss.backward()
                     errG = contentLoss
-                else:
-                    errG = reduce(lambda x, y: 0.5 * x + y,
-                                  map(lambda x, y: criterion_GAN(netD(torch.cat([x, Variable(y)], 1)), True) * 0.0001,
-                                      fake,
-                                      real_bim))
-                    errG.backward(retain_graph=True)
 
-                    contentLoss = criterion_L2(fake[2].mul(0.5).add(0.5), Variable(real_sim[2].mul(0.5).add(0.5)))
-                    epoch_loss += 10 * log10(1 / contentLoss.data[0])
+                    MSE = criterion_L2(fake.mul(0.5).add(0.5), Variable(real_sim.mul(0.5).add(0.5)))
+                    epoch_loss += 10 * log10(1 / MSE.data[0])
                     epoch_iter_count += 1
 
-                    contentLoss += criterion_L2(fake[1].mul(0.5).add(0.5), Variable(real_sim[1].mul(0.5).add(0.5)))
-                    contentLoss += criterion_L2(fake[0].mul(0.5).add(0.5), Variable(real_sim[0].mul(0.5).add(0.5)))
-                    contentLoss /= 3.0
+                else:
+                    errG = criterion_GAN(netD(torch.cat([fake, Variable(real_bim)], 1)), True) * 0.0001
+                    errG.backward(retain_graph=True)
 
+                    contentLoss = criterion_L1(fake, Variable(real_sim))
                     contentLoss.backward()
+
+                    MSE = criterion_L2(fake.mul(0.5).add(0.5), Variable(real_sim.mul(0.5).add(0.5)))
+                    epoch_loss += 10 * log10(1 / MSE.data[0])
+                    epoch_iter_count += 1
 
                 optimizerG.step()
 
@@ -230,11 +213,11 @@ for epoch in range(opt.epoi, opt.niter):
             # (3) Report & 100 Batch checkpoint
             ############################
 
-            if gen_iterations < opt.baseGeni:
+            if gen_iterations < opt.baseGeni or not opt.adv:
                 if flag2:
                     L1window = viz.line(
                         np.array([contentLoss.data[0]]), np.array([gen_iterations]),
-                        opts=dict(title='MSE loss toward real', caption='Gnet content loss')
+                        opts=dict(title='L1 loss toward real', caption='Gnet content loss')
                     )
                     flag2 -= 1
                 else:
@@ -284,23 +267,20 @@ for epoch in range(opt.epoi, opt.niter):
                 fake = netG(Variable(fixed_blur, volatile=True))
 
                 if flag3:
-                    imageW = []
-                    for i in range(3):
-                        imageW.append(viz.images(
-                            fake[i].data.mul(0.5).add(0.5).clamp(0, 1).cpu().numpy(),
-                            opts=dict(title='deblur img', caption='level ' + str(i + 1))
-                        ))
+                    imageW = viz.images(
+                        fake.data.mul(0.5).add(0.5).clamp(0, 1).cpu().numpy(),
+                        opts=dict(title='deblur img', caption='level 0')
+                    )
                     flag3 -= 1
                 else:
-                    for i in range(3):
-                        viz.images(
-                            fake[i].data.mul(0.5).add(0.5).clamp(0, 1).cpu().numpy(),
-                            win=imageW[i],
-                            opts=dict(title='deblur img', caption='level ' + str(i + 1))
-                        )
+                    viz.images(
+                        fake.data.mul(0.5).add(0.5).clamp(0, 1).cpu().numpy(),
+                        win=imageW,
+                        opts=dict(title='deblur img', caption='level 0')
+                    )
 
             if gen_iterations % 1000 == 0:
-                vutils.save_image(fake[2].data.mul(0.5).add(0.5),
+                vutils.save_image(fake.data.mul(0.5).add(0.5).clamp(0, 1),
                                   '%s/fake_samples_gen_iter_%08d.png' % (opt.outf, gen_iterations))
 
             gen_iterations += 1
@@ -311,7 +291,7 @@ for epoch in range(opt.epoi, opt.niter):
             for batch in dataloader_test:
                 input, target = [x.cuda() for x in batch]
                 prediction = netG(Variable(input, volatile=True))
-                mse = criterion_L2(prediction[2].mul(0.5).add(0.5), Variable(target.mul(0.5).add(0.5)))
+                mse = criterion_L2(prediction.mul(0.5).add(0.5), Variable(target.mul(0.5).add(0.5)))
                 psnr = 10 * log10(1 / mse.data[0])
                 avg_psnr += psnr
             avg_psnr = avg_psnr / len(dataloader_test)
