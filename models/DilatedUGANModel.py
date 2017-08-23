@@ -11,7 +11,7 @@ class ResBlock(nn.Module):
         self.conv2 = nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=Dilation, dilation=Dilation)
 
     def forward(self, x):
-        out = self.conv1(F.relu(x, True))
+        out = self.conv1(F.relu(x, False))
         out = self.conv2(F.relu(out, True))
 
         out += x
@@ -25,7 +25,7 @@ class Block(nn.Module):
         self.conv2 = nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=Dilation, dilation=Dilation)
 
     def forward(self, x):
-        out = self.conv1(F.relu(x, True))
+        out = self.conv1(F.relu(x, False))
         out = self.conv2(F.relu(out, True))
 
         return out
@@ -93,7 +93,9 @@ class Pyramid(nn.Module):
         self.tunnel1 = nn.Sequential(nn.Conv2d(128, 64, 5, 1, 2, bias=False),
                                      DilateTunnel2(2))
 
-        self.exit = nn.Conv2d(64, 3, kernel_size=3, stride=1, padding=1)
+        self.exit1 = nn.Conv2d(64, 3, kernel_size=3, stride=1, padding=1)
+        self.exit2 = nn.Conv2d(64, 3, kernel_size=3, stride=1, padding=1)
+        self.exit3 = nn.Conv2d(64, 3, kernel_size=3, stride=1, padding=1)
 
     def forward(self, bimg):
         lv1 = self.entrance1(bimg)
@@ -102,15 +104,15 @@ class Pyramid(nn.Module):
 
         results = []
         lv3 = self.tunnel3(lv3)
-        results.append(self.exit(lv3))
+        results.append(self.exit3(lv3))
 
         up3 = self.up3(lv3)
         lv2 = self.tunnel2(torch.cat([up3, lv2.detach()], 1)) + up3
-        results.append(self.exit(lv2))
+        results.append(self.exit2(lv2))
 
         up2 = self.up2(lv2)
         lv1 = self.tunnel1(torch.cat([up2, lv1.detach()], 1)) + up2
-        results.append(self.exit(lv1))
+        results.append(self.exit1(lv1))
 
         return results
 

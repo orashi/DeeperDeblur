@@ -19,14 +19,13 @@ parser.add_argument('--dataroot', required=True, help='path to dataset')
 parser.add_argument('--workers', type=int, help='number of data loading workers', default=4)
 parser.add_argument('--batchSize', type=int, default=4, help='input batch size')
 parser.add_argument('--test', type=bool, default=False, help='test option')
-parser.add_argument('--testBatch', type=int, default=10, help='input test batch size')
-parser.add_argument('--imageSize', type=int, default=256, help='the height / width of the input image to network')
+parser.add_argument('--testBatch', type=int, default=4, help='input test batch size')
 parser.add_argument('--cut', type=int, default=2, help='cut backup frequency')
 parser.add_argument('--niter', type=int, default=700, help='number of epochs to train for')
 parser.add_argument('--ngf', type=int, default=64)
 parser.add_argument('--ndf', type=int, default=64)
-parser.add_argument('--lrG', type=float, default=0.0001, help='learning rate, default=0.0001')
-parser.add_argument('--lrD', type=float, default=0.0001, help='learning rate, default=0.0001')
+parser.add_argument('--lrG', type=float, default=0.00005, help='learning rate, default=0.0001')
+parser.add_argument('--lrD', type=float, default=0.00005, help='learning rate, default=0.0001')
 parser.add_argument('--beta1', type=float, default=0.9, help='beta1 for adam. default=0.9')
 parser.add_argument('--cuda', action='store_true', help='enables cuda')
 parser.add_argument('--netG', default='', help="path to netG (to continue training)")
@@ -35,6 +34,7 @@ parser.add_argument('--outf', default='.', help='folder to output images and mod
 parser.add_argument('--Diters', type=int, default=1, help='number of D iters per each G iter')
 parser.add_argument('--manualSeed', type=int, default=2345, help='random seed to use. Default=1234')
 parser.add_argument('--baseGeni', type=int, default=0, help='start base of pure pair L1 loss')
+parser.add_argument('--adv', type=bool, default=False, help='adversarial training option')
 parser.add_argument('--geni', type=int, default=0, help='continue gen image num')
 parser.add_argument('--epoi', type=int, default=0, help='continue epoch num')
 parser.add_argument('--env', type=str, default='main', help='visdom env')
@@ -123,7 +123,7 @@ for epoch in range(opt.epoi, opt.niter):
             # train the discriminator Diters times
             Diters = opt.Diters
 
-            if gen_iterations < opt.baseGeni:  # L1 stage
+            if gen_iterations < opt.baseGeni or not opt.adv:  # L1 stage
                 Diters = 0
 
             j = 0
@@ -196,7 +196,7 @@ for epoch in range(opt.epoi, opt.niter):
 
                 fake = netG(Variable(real_bim[2]))
 
-                if gen_iterations < opt.baseGeni:
+                if gen_iterations < opt.baseGeni or not opt.adv:
                     contentLoss = criterion_L2(fake[2].mul(0.5).add(0.5), Variable(real_sim[2].mul(0.5).add(0.5)))
                     epoch_loss += 10 * log10(1 / contentLoss.data[0])
                     epoch_iter_count += 1
@@ -230,7 +230,7 @@ for epoch in range(opt.epoi, opt.niter):
             # (3) Report & 100 Batch checkpoint
             ############################
 
-            if gen_iterations < opt.baseGeni:
+            if gen_iterations < opt.baseGeni or not opt.adv:
                 if flag2:
                     L1window = viz.line(
                         np.array([contentLoss.data[0]]), np.array([gen_iterations]),
