@@ -26,6 +26,7 @@ parser.add_argument('--ngf', type=int, default=64)
 parser.add_argument('--ndf', type=int, default=64)
 parser.add_argument('--lrG', type=float, default=0.00005, help='learning rate, default=0.0001')
 parser.add_argument('--lrD', type=float, default=0.00005, help='learning rate, default=0.0001')
+parser.add_argument('--advW', type=float, default=0.0001, help='adversarial weight, default=0.0001')
 parser.add_argument('--beta1', type=float, default=0.9, help='beta1 for adam. default=0.9')
 parser.add_argument('--cuda', action='store_true', help='enables cuda')
 parser.add_argument('--netG', default='', help="path to netG (to continue training)")
@@ -209,7 +210,7 @@ for epoch in range(opt.epoi, opt.niter):
                     errG = contentLoss
                 else:
                     errG = reduce(lambda x, y: 0.5 * x + y,
-                                  map(lambda x, y: criterion_GAN(netD(torch.cat([x, Variable(y)], 1)), True) * 0.0001,
+                                  map(lambda x, y: criterion_GAN(netD(torch.cat([x, Variable(y)], 1)), True) * opt.advW,
                                       fake,
                                       real_bim))
                     errG.backward(retain_graph=True)

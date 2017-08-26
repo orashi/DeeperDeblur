@@ -4,7 +4,7 @@ from math import log10
 import torch.backends.cudnn as cudnn
 
 from data.oneData import CreateDataLoader
-from models.oneModel import *
+from models.UGANModel import *
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--testBatch', type=int, default=1, help='input test batch size')
@@ -41,7 +41,7 @@ avg_psnr = 0
 for batch in dataloader_test:
     input, target = [x.cuda() for x in batch]
     prediction = netG(Variable(input, volatile=True))
-    mse = criterion_L2(prediction.mul(0.5).add(0.5), Variable(target.mul(0.5).add(0.5)))
+    mse = criterion_L2(prediction[2].mul(0.5).add(0.5), Variable(target.mul(0.5).add(0.5)))
     psnr = 10 * log10(1 / mse.data[0])
     print("PSNR: {:.4f} dB".format(psnr))
 
