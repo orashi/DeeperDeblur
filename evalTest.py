@@ -30,7 +30,7 @@ if opt.cuda:
     netG.cuda()
 
 for input, name in dataloader_test:
-    prediction = netG(Variable(input, volatile=True))
+    prediction = netG(Variable(input.cuda(), volatile=True))
     vutils.save_image(prediction.mul(0.5).add(0.5),
                       os.path.join(os.path.split(opt.dataroot)[0], os.path.split(opt.dataroot)[1] + ' result',
                                    name + '.png'))
