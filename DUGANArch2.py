@@ -125,11 +125,6 @@ def calc_gradient_penalty(netD, real_data, fake_data):
 
 
 flag = 1
-flag2 = 1
-flag3 = 1
-flag4 = 1
-flag5 = 1
-flag6 = 1
 for epoch in range(opt.epoi, opt.niter):
 
     epoch_loss = 0

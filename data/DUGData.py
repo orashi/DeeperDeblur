@@ -32,7 +32,7 @@ class RandomSizedCrop(object):
     def __call__(self, img1, img2):
         for attempt in range(10):
             area = img1.size[0] * img1.size[1]
-            target_area = random.uniform(0.068, 0.08) * area  # fix this
+            target_area = random.uniform(0.058, 0.087) * area  # fix this
             aspect_ratio = random.uniform(3. / 4, 4. / 3)
 
             w = int(round(math.sqrt(target_area * aspect_ratio)))
@@ -108,18 +108,12 @@ class ImageFolder_train(data.Dataset):
 
         #############################################
 
-        result = []
         indices = [0, 1, 2]
         random.shuffle(indices)
         indices = torch.LongTensor(indices)
-        for i in reversed(range(3)):
-            ratio = 256 // (2 ** i)
-            result.append(torch.index_select(self.transform(Bimg.resize((ratio, ratio), Image.BICUBIC)), 0, indices))
-        for i in reversed(range(3)):
-            ratio = 256 // (2 ** i)
-            result.append(torch.index_select(self.transform(Simg.resize((ratio, ratio), Image.BICUBIC)), 0, indices))
 
-        return result
+        return torch.index_select(self.transform(Bimg), 0, indices), torch.index_select(self.transform(Simg), 0,
+                                                                                        indices)
 
     def __len__(self):
         return len(self.imgs)
