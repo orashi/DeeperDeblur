@@ -247,7 +247,7 @@ for epoch in range(opt.epoi, opt.niter):
                 writer.add_scalar('Gnet loss toward real', errG.data[0], gen_iterations)
                 writer.add_scalar('gradient_penalty', gradient_penalty.data[0], gen_iterations)
                 print('[%d/%d][%d/%d][%d] errD: %f err_G: %f err_D_real: %f err_D_fake %f content loss %f'
-                      % (epoch, opt.niter, iter_count + extra * len(dataloader_train), len(dataloader_train) * 4,
+                      % (epoch, opt.niter, iter_count + extra * len(dataloader_train), len(dataloader_train) * 2 * (opt.Diters + 1),
                          gen_iterations, errD.data[0], errG.data[0], errD_real.data[0], errD_fake.data[0],
                          contentLoss.data[0]))
 
