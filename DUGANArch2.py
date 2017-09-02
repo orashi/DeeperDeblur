@@ -3,12 +3,13 @@ import os
 import random
 from math import log10
 
+import torch
 import torch.backends.cudnn as cudnn
 import torch.optim as optim
 import torch.optim.lr_scheduler as lr_scheduler
 import torchvision.utils as vutils
 from tensorboardX import SummaryWriter
-from torch.autograd import grad
+from torch.autograd import Variable, grad
 
 from data.DUGData import CreateDataLoader
 from models.DUGANM import *
@@ -215,7 +216,7 @@ for epoch in range(opt.epoi, opt.niter):
                     epoch_iter_count += 1
                     errG = contentLoss
                 else:
-                    errG = netD(torch.cat([fake, Variable(real_bim)], 1)).mean(0).view(1)
+                    errG = netD(torch.cat([fake, Variable(real_bim)], 1)).mean(0).view(1) * opt.advW
                     errG.backward(mone, retain_graph=True)
 
                     contentLoss = criterion_L2(fake.mul(0.5).add(0.5), Variable(real_sim.mul(0.5).add(0.5)))
