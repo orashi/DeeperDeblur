@@ -88,6 +88,7 @@ if opt.cuda:
     criterion_L1.cuda()
     criterion_L2.cuda()
     criterion_GAN.cuda()
+    one, mone = one.cuda(), mone.cuda()
 
 # setup optimizer
 optimizerG = optim.Adam(netG.parameters(), lr=opt.lrG, betas=(opt.beta1, 0.9))
