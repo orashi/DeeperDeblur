@@ -85,7 +85,7 @@ class Pyramid(nn.Module):
     def __init__(self):
         super(Pyramid, self).__init__()
 
-        self.entrance = nn.Sequential(nn.Conv2d(3, 64, kernel_size=7, stride=1, padding=4, bias=False),
+        self.entrance = nn.Sequential(nn.Conv2d(3, 64, kernel_size=7, stride=1, padding=3, bias=False),
                                       nn.ReLU(inplace=True),
                                       nn.Conv2d(64, 256, kernel_size=4, stride=2, padding=1, bias=False),
                                       nn.ReLU(inplace=True)
