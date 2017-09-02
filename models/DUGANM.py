@@ -1,69 +1,80 @@
-import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.autograd import Variable
 
 
-class ResBlock(nn.Module):
-    def __init__(self, Dilation=1):
-        super(ResBlock, self).__init__()
-        self.conv1 = nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=Dilation, dilation=Dilation)
-        self.conv2 = nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=Dilation, dilation=Dilation)
+class ResNeXtBottleneck(nn.Module):
+    """
+    RexNeXt bottleneck type C (https://github.com/facebookresearch/ResNeXt/blob/master/models/resnext.lua)
+    """
+
+    def __init__(self, in_channels=256, out_channels=256, stride=1, cardinality=32):
+        """ Constructor
+        Args:
+            in_channels: input channel dimensionality
+            out_channels: output channel dimensionality
+            stride: conv stride. Replaces pooling layer.
+            cardinality: num of convolution groups.
+        """
+        super(ResNeXtBottleneck, self).__init__()
+        D = out_channels // 2
+        self.conv_reduce = nn.Conv2d(in_channels, D, kernel_size=1, stride=1, padding=0, bias=False)
+        self.conv_conv = nn.Conv2d(D, D, kernel_size=3, stride=stride, padding=1, groups=cardinality, bias=False)
+        self.conv_expand = nn.Conv2d(D, out_channels, kernel_size=1, stride=1, padding=0, bias=False)
+        self.shortcut = nn.Sequential()
+        if in_channels != out_channels:
+            self.shortcut.add_module('shortcut_conv',
+                                     nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=stride, padding=0,
+                                               bias=False))
 
     def forward(self, x):
-        out = self.conv1(F.relu(x, False))
-        out = self.conv2(F.relu(out, True))
+        bottleneck = self.conv_reduce.forward(x)
+        bottleneck = F.relu(bottleneck, inplace=True)
+        bottleneck = self.conv_conv.forward(bottleneck)
+        bottleneck = F.relu(bottleneck, inplace=True)
+        bottleneck = self.conv_expand.forward(bottleneck)
+        residual = self.shortcut.forward(x)
+        return residual + bottleneck
 
-        out += x
-        return out
 
+class DResNeXtBottleneck(nn.Module):
+    """
+    RexNeXt bottleneck type C (https://github.com/facebookresearch/ResNeXt/blob/master/models/resnext.lua)
+    """
 
-class Block(nn.Module):
-    def __init__(self, Dilation=1):
-        super(Block, self).__init__()
-        self.conv1 = nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=Dilation, dilation=Dilation)
-        self.conv2 = nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=Dilation, dilation=Dilation)
+    def __init__(self, in_channels=256, out_channels=256, stride=1, cardinality=32):
+        """ Constructor
+        Args:
+            in_channels: input channel dimensionality
+            out_channels: output channel dimensionality
+            stride: conv stride. Replaces pooling layer.
+            cardinality: num of convolution groups.
+        """
+        super(DResNeXtBottleneck, self).__init__()
+        D = out_channels // 2
+        self.conv_reduce = nn.Conv2d(in_channels, D, kernel_size=1, stride=1, padding=0, bias=False)
+        self.conv_conv = nn.Conv2d(D, D, kernel_size=3, stride=stride, padding=1, groups=cardinality, bias=False)
+        self.conv_expand = nn.Conv2d(D, out_channels, kernel_size=1, stride=1, padding=0, bias=False)
+        self.shortcut = nn.Sequential()
+        if in_channels != out_channels:
+            self.shortcut.add_module('shortcut_conv',
+                                     nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=stride, padding=0,
+                                               bias=False))
 
     def forward(self, x):
-        out = self.conv1(F.relu(x, False))
-        out = self.conv2(F.relu(out, True))
-
-        return out
+        bottleneck = self.conv_reduce.forward(x)
+        bottleneck = F.leaky_relu(bottleneck, 0.2, inplace=True)
+        bottleneck = self.conv_conv.forward(bottleneck)
+        bottleneck = F.leaky_relu(bottleneck, 0.2, True)
+        bottleneck = self.conv_expand.forward(bottleneck)
+        residual = self.shortcut.forward(x)
+        return residual + bottleneck
 
 
 class Tunnel(nn.Module):
-    def __init__(self, len=1):
+    def __init__(self, len=1, bottleneck=ResNeXtBottleneck, *args):
         super(Tunnel, self).__init__()
 
-        tunnel = [ResBlock() for _ in range(len)]
-        self.tunnel = nn.Sequential(*tunnel)
-
-    def forward(self, x):
-        return self.tunnel(x)
-
-
-class DilateTunnel(nn.Module):
-    def __init__(self, depth=3):
-        super(DilateTunnel, self).__init__()
-
-        tunnel = [ResBlock(1) for _ in range(depth)]
-        tunnel += [ResBlock(2) for _ in range(depth)]
-        tunnel += [ResBlock(4) for _ in range(depth)]
-        tunnel += [Block(2), Block(1)]
-        self.tunnel = nn.Sequential(*tunnel)
-
-    def forward(self, x):
-        return self.tunnel(x)
-
-class DilateTunnel2(nn.Module):
-    def __init__(self, depth=2):
-        super(DilateTunnel2, self).__init__()
-
-        tunnel = [ResBlock(1) for _ in range(depth)]
-        tunnel += [ResBlock(2) for _ in range(depth)]
-        tunnel += [ResBlock(4) for _ in range(depth)]
-        tunnel += [ResBlock(8) for _ in range(depth)]
-        tunnel += [Block(2), Block(1)]
+        tunnel = [bottleneck(*args) for _ in range(len)]
         self.tunnel = nn.Sequential(*tunnel)
 
     def forward(self, x):
@@ -74,47 +85,24 @@ class Pyramid(nn.Module):
     def __init__(self):
         super(Pyramid, self).__init__()
 
-        self.entrance1 = nn.Sequential(nn.Conv2d(3, 64, kernel_size=5, stride=1, padding=2),
-                                       nn.ReLU(inplace=True))
-        self.entrance2 = nn.Sequential(nn.Conv2d(64, 64, kernel_size=4, stride=2, padding=1),
-                                       nn.ReLU(inplace=True))
-        self.entrance3 = nn.Conv2d(64, 64, kernel_size=4, stride=2, padding=1)
+        self.entrance = nn.Sequential(nn.Conv2d(3, 64, kernel_size=7, stride=1, padding=4, bias=False),
+                                      nn.ReLU(inplace=True),
+                                      nn.Conv2d(64, 256, kernel_size=4, stride=2, padding=1, bias=False),
+                                      nn.ReLU(inplace=True)
+                                      )
 
-        self.up3 = nn.Sequential(nn.Conv2d(64, 64 * 4, 3, 1, 1, bias=False),
-                                 nn.PixelShuffle(2),
-                                 nn.ReLU(inplace=True))
-        self.up2 = nn.Sequential(nn.Conv2d(64, 64 * 4, 3, 1, 1, bias=False),
-                                 nn.PixelShuffle(2),
-                                 nn.ReLU(inplace=True))
+        self.tunnel = nn.Sequential(Tunnel(60))
 
-        self.tunnel3 = nn.Sequential(Tunnel(20))
-        self.tunnel2 = nn.Sequential(nn.Conv2d(128, 64, 5, 1, 2, bias=False),
-                                     DilateTunnel(3))
-        self.tunnel1 = nn.Sequential(nn.Conv2d(128, 64, 5, 1, 2, bias=False),
-                                     DilateTunnel2(2))
+        self.exit = nn.Sequential(nn.Conv2d(256, 256, 3, 1, 1, bias=False),
+                                  nn.PixelShuffle(2),
+                                  nn.ReLU(inplace=True),
+                                  nn.Conv2d(64, 3, kernel_size=3, stride=1, padding=1, bias=False)
+                                  )
 
-        self.exit1 = nn.Conv2d(64, 3, kernel_size=3, stride=1, padding=1)
-        self.exit2 = nn.Conv2d(64, 3, kernel_size=3, stride=1, padding=1)
-        self.exit3 = nn.Conv2d(64, 3, kernel_size=3, stride=1, padding=1)
-
-    def forward(self, bimg):
-        lv1 = self.entrance1(bimg)
-        lv2 = self.entrance2(lv1)
-        lv3 = self.entrance3(lv2)  # need discussion
-
-        results = []
-        lv3 = self.tunnel3(lv3)
-        results.append(self.exit3(lv3))
-
-        up3 = self.up3(lv3)
-        lv2 = self.tunnel2(torch.cat([up3, lv2.detach()], 1)) + up3
-        results.append(self.exit2(lv2))
-
-        up2 = self.up2(lv2)
-        lv1 = self.tunnel1(torch.cat([up2, lv1.detach()], 1)) + up2
-        results.append(self.exit1(lv1))
-
-        return results
+    def forward(self, x):
+        x = self.entrance(x)
+        x = self.tunnel(x)
+        return self.exit(x)
 
 
 class PatchD(nn.Module):
@@ -122,64 +110,31 @@ class PatchD(nn.Module):
         super(PatchD, self).__init__()
 
         sequence = [
-            nn.Conv2d(6, ndf, kernel_size=4, stride=2, padding=1),
-            nn.LeakyReLU(0.2, True)
-        ]
-
-        sequence += [
-            nn.Conv2d(ndf * 1, ndf * 2,
-                      kernel_size=4, stride=2, padding=1),
-            nn.LeakyReLU(0.2, True)
-        ]
-
-        sequence += [
-            nn.Conv2d(ndf * 2, ndf * 4,
-                      kernel_size=4, stride=2, padding=1),
-            nn.LeakyReLU(0.2, True)
-        ]
-
-        sequence += [
-            nn.Conv2d(ndf * 4, ndf * 8,
-                      kernel_size=4, stride=1, padding=1),  # stride 1
+            nn.Conv2d(6, ndf, kernel_size=4, stride=2, padding=1, bias=False),  # 128
             nn.LeakyReLU(0.2, True),
-            nn.Conv2d(ndf * 8, 1, kernel_size=4, stride=1, padding=1)
+
+            Tunnel(2, DResNeXtBottleneck, ndf, ndf),
+            ResNeXtBottleneck(ndf, ndf * 2, 2),  # 64
+
+            Tunnel(3, DResNeXtBottleneck, ndf * 2, ndf * 2),
+            ResNeXtBottleneck(ndf * 2, ndf * 4, 2),  # 32
+
+            Tunnel(4, DResNeXtBottleneck, ndf * 4, ndf * 4),
+            ResNeXtBottleneck(ndf * 4, ndf * 8, 2),  # 16
+
+            Tunnel(4, DResNeXtBottleneck, ndf * 8, ndf * 8),
+            ResNeXtBottleneck(ndf * 8, ndf * 16, 2),  # 8
+
+            Tunnel(2, DResNeXtBottleneck, ndf * 16, ndf * 16),
+            ResNeXtBottleneck(ndf * 16, ndf * 32, 2),  # 4
+
+            nn.Conv2d(ndf * 32, 1, kernel_size=4, stride=1, padding=0, bias=False)
+
         ]
+
         self.model = nn.Sequential(*sequence)
 
     def forward(self, input):
         return self.model(input)
 
-
-class GANLoss(nn.Module):
-    def __init__(self, target_real_label=1.0, target_fake_label=0.0,
-                 tensor=torch.FloatTensor):
-        super(GANLoss, self).__init__()
-        self.real_label = target_real_label
-        self.fake_label = target_fake_label
-        self.real_label_var = None
-        self.fake_label_var = None
-        self.Tensor = tensor
-        self.loss = nn.MSELoss()
-
-    def get_target_tensor(self, input, target_is_real):
-        if target_is_real:
-            create_label = ((self.real_label_var is None) or
-                            (self.real_label_var.numel() != input.numel()))
-            if create_label:
-                real_tensor = self.Tensor(input.size()).fill_(self.real_label)
-                self.real_label_var = Variable(real_tensor, requires_grad=False)
-            target_tensor = self.real_label_var
-        else:
-            create_label = ((self.fake_label_var is None) or
-                            (self.fake_label_var.numel() != input.numel()))
-            if create_label:
-                fake_tensor = self.Tensor(input.size()).fill_(self.fake_label)
-                self.fake_label_var = Variable(fake_tensor, requires_grad=False)
-            target_tensor = self.fake_label_var
-        return target_tensor
-
-    def __call__(self, input, target_is_real):
-        target_tensor = self.get_target_tensor(input, target_is_real)
-        return self.loss(input, target_tensor)
-
-# TODO: fix relu bug
+        # TODO: fix relu bug
