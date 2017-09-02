@@ -176,7 +176,8 @@ for epoch in range(opt.epoi, opt.niter):
                 errD = errD_real - errD_fake
 
                 # gradient penalty
-                gradient_penalty = calc_gradient_penalty(netD, real_sim, fake_sim)
+                gradient_penalty = calc_gradient_penalty(netD, torch.cat([real_sim, real_bim], 1),
+                                                         torch.cat([fake_sim, real_bim], 1))
                 gradient_penalty.backward()
 
                 optimizerD.step()
