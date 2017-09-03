@@ -253,7 +253,7 @@ for epoch in range(opt.epoi, opt.niter):
 
             if gen_iterations % 100 == 0:
                 fake = netG(Variable(fixed_blur, volatile=True))
-                writer.add_image('deblur imgs', vutils.make_grid(fake.data.mul(0.5).add(0.5), nrow=16), gen_iterations)
+                writer.add_image('deblur imgs', vutils.make_grid(fake.data.mul(0.5).add(0.5).clamp(0, 1), nrow=16), gen_iterations)
 
             if gen_iterations % 1000 == 0:
                 for name, param in netG.named_parameters():
