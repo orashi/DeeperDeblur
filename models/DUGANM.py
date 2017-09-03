@@ -18,7 +18,8 @@ class ResNeXtBottleneck(nn.Module):
         super(ResNeXtBottleneck, self).__init__()
         D = out_channels // 2
         self.conv_reduce = nn.Conv2d(in_channels, D, kernel_size=1, stride=1, padding=0, bias=False)
-        self.conv_conv = nn.Conv2d(D, D, kernel_size=3, stride=stride, padding=dilate, dilation=dilate, groups=cardinality,
+        self.conv_conv = nn.Conv2d(D, D, kernel_size=3, stride=stride, padding=dilate, dilation=dilate,
+                                   groups=cardinality,
                                    bias=False)
         self.conv_expand = nn.Conv2d(D, out_channels, kernel_size=1, stride=1, padding=0, bias=False)
 
@@ -28,7 +29,7 @@ class ResNeXtBottleneck(nn.Module):
         bottleneck = self.conv_conv.forward(bottleneck)
         bottleneck = F.relu(bottleneck, inplace=True)
         bottleneck = self.conv_expand.forward(bottleneck)
-        return x + bottleneck
+        return F.relu(x + bottleneck, inplace=True)
 
 
 class DResNeXtBottleneck(nn.Module):
@@ -57,12 +58,12 @@ class DResNeXtBottleneck(nn.Module):
 
     def forward(self, x):
         bottleneck = self.conv_reduce.forward(x)
-        bottleneck = F.leaky_relu(bottleneck, 0.2, inplace=True)
+        bottleneck = F.leaky_relu(bottleneck, 0.2, True)
         bottleneck = self.conv_conv.forward(bottleneck)
         bottleneck = F.leaky_relu(bottleneck, 0.2, True)
         bottleneck = self.conv_expand.forward(bottleneck)
         residual = self.shortcut.forward(x)
-        return residual + bottleneck
+        return F.leaky_relu(residual + bottleneck, True)
 
 
 class Tunnel(nn.Module):
@@ -84,7 +85,7 @@ class DilateTunnel(nn.Module):
         tunnel += [ResNeXtBottleneck(dilate=2) for _ in range(depth)]
         tunnel += [ResNeXtBottleneck(dilate=4) for _ in range(depth)]
         tunnel += [ResNeXtBottleneck(dilate=8) for _ in range(depth)]
-        tunnel = [ResNeXtBottleneck(dilate=1) for _ in range(14)]
+        tunnel += [ResNeXtBottleneck(dilate=1) for _ in range(14)]
 
         self.tunnel = nn.Sequential(*tunnel)
 
@@ -107,6 +108,7 @@ class Pyramid(nn.Module):
         self.exit = nn.Sequential(nn.Conv2d(256, 256, 3, 1, 1, bias=False),
                                   nn.PixelShuffle(2),
                                   nn.ReLU(inplace=True),
+                                  ResNeXtBottleneck(64, 64),
                                   nn.Conv2d(64, 3, kernel_size=3, stride=1, padding=1, bias=False)
                                   )
 
