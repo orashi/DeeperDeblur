@@ -1,9 +1,10 @@
 import argparse
 
+import torch
 import torchvision.utils as vutils
 
 from data.evalData import *
-from models.UGANModel import *
+from models.DUGANM import *
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--netG', default='', help="path to netG (to continue training)")
@@ -40,4 +41,3 @@ for input, name in dataloader_test:
     print(name[0] + '　処理完了')
     prediction = 0
     input = 0
-    

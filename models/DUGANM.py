@@ -29,7 +29,7 @@ class ResNeXtBottleneck(nn.Module):
         bottleneck = self.conv_conv.forward(bottleneck)
         bottleneck = F.relu(bottleneck, inplace=True)
         bottleneck = self.conv_expand.forward(bottleneck)
-        return F.relu(x + bottleneck, inplace=True)
+        return x + bottleneck
 
 
 class DResNeXtBottleneck(nn.Module):
@@ -63,7 +63,7 @@ class DResNeXtBottleneck(nn.Module):
         bottleneck = F.leaky_relu(bottleneck, 0.2, True)
         bottleneck = self.conv_expand.forward(bottleneck)
         residual = self.shortcut.forward(x)
-        return F.leaky_relu(residual + bottleneck, True)
+        return residual + bottleneck
 
 
 class Tunnel(nn.Module):
@@ -108,7 +108,6 @@ class Pyramid(nn.Module):
         self.exit = nn.Sequential(nn.Conv2d(256, 256, 3, 1, 1, bias=False),
                                   nn.PixelShuffle(2),
                                   nn.ReLU(inplace=True),
-                                  ResNeXtBottleneck(64, 64),
                                   nn.Conv2d(64, 3, kernel_size=3, stride=1, padding=1, bias=False)
                                   )
 
