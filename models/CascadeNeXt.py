@@ -4,26 +4,31 @@ import torch.nn.functional as F
 
 
 class ResNeXtBottleneck(nn.Module):
-    def __init__(self, in_channels=256, out_channels=256, stride=1, cardinality=32, dilate=1, extra_channel=0):
+    def __init__(self, in_channels=256, out_channels=256, stride=1, cardinality=32, dilate=1):
         super(ResNeXtBottleneck, self).__init__()
         D = out_channels // 2
-        self.conv_reduce = nn.Conv2d(in_channels+extra_channel, D, kernel_size=1, stride=1, padding=0, bias=False)
+        self.conv_reduce = nn.Conv2d(in_channels, D, kernel_size=1, stride=1, padding=0, bias=False)
         self.conv_conv = nn.Conv2d(D, D, kernel_size=3, stride=stride, padding=dilate, dilation=dilate,
                                    groups=cardinality,
                                    bias=False)
         self.conv_expand = nn.Conv2d(D, out_channels, kernel_size=1, stride=1, padding=0, bias=False)
 
-    def forward(self, x, extra=None):
-        if extra:
-            bottleneck = self.conv_reduce.forward(torch.cat([x, extra], 1))
+    def forward(self, x):
+        if isinstance(x, tuple):
+            bottleneck = self.conv_reduce.forward(torch.cat([x[0], x[1]], 1))
+            bottleneck = F.relu(bottleneck, inplace=True)
+            bottleneck = self.conv_conv.forward(bottleneck)
+            bottleneck = F.relu(bottleneck, inplace=True)
+            bottleneck = self.conv_expand.forward(bottleneck)
+            return x[0] + bottleneck, x[1]
         else:
             bottleneck = self.conv_reduce.forward(x)
 
-        bottleneck = F.relu(bottleneck, inplace=True)
-        bottleneck = self.conv_conv.forward(bottleneck)
-        bottleneck = F.relu(bottleneck, inplace=True)
-        bottleneck = self.conv_expand.forward(bottleneck)
-        return x + bottleneck
+            bottleneck = F.relu(bottleneck, inplace=True)
+            bottleneck = self.conv_conv.forward(bottleneck)
+            bottleneck = F.relu(bottleneck, inplace=True)
+            bottleneck = self.conv_expand.forward(bottleneck)
+            return x + bottleneck
 
 
 class DResNeXtBottleneck(nn.Module):
@@ -96,45 +101,49 @@ class Pyramid(nn.Module):
                                        nn.ReLU(inplace=True))
         self.entrance3 = nn.Conv2d(128, 256, kernel_size=4, stride=2, padding=1)
 
-        self.up3 = nn.Sequential(nn.Conv2d(256, 32*4, 3, 1, 1, bias=False),
+        self.up3 = nn.Sequential(nn.Conv2d(256, 32 * 4, 3, 1, 1, bias=False),
                                  nn.PixelShuffle(2),
                                  nn.ReLU(inplace=True))
+        self.con2 = nn.Conv2d(160, 32, 5, 1, 2, bias=False)
+
         self.up2 = nn.Sequential(nn.Conv2d(32, 32 * 4, 3, 1, 1, bias=False),
                                  nn.PixelShuffle(2),
                                  nn.ReLU(inplace=True))
+        self.con1 = nn.Conv2d(160, 32, 5, 1, 2, bias=False)
 
         tunnel = [DResNeXtBottleneck() for _ in range(30)]
         self.tunnel3 = nn.Sequential(*tunnel)
-        self.tunnel2 = nn.Sequential(nn.Conv2d(128, 64, 5, 1, 2, bias=False),
-                                     DilateTunnel(3))
-        self.tunnel1 = nn.Sequential(nn.Conv2d(128, 64, 5, 1, 2, bias=False),
-                                     DilateTunnel2(2))
 
-        self.exit1 = nn.Conv2d(64, 3, kernel_size=3, stride=1, padding=1)
-        self.exit2 = nn.Conv2d(64, 3, kernel_size=3, stride=1, padding=1)
-        self.exit3 = nn.Conv2d(64, 3, kernel_size=3, stride=1, padding=1)
+        depth = 3
+        tunnel = [ResNeXtBottleneck(64, 32, cardinality=8, dilate=1) for _ in range(depth)]
+        tunnel += [ResNeXtBottleneck(64, 32, cardinality=8, dilate=2) for _ in range(depth)]
+        tunnel += [ResNeXtBottleneck(64, 32, cardinality=8, dilate=4) for _ in range(depth)]
+        tunnel += [ResNeXtBottleneck(64, 32, cardinality=8, dilate=2),
+                   ResNeXtBottleneck(64, 32, cardinality=8, dilate=1)]
+        self.tunnel2 = nn.Sequential(*tunnel)
 
+        tunnel = [ResNeXtBottleneck(64, 32, cardinality=8, dilate=1) for _ in range(depth)]
+        tunnel += [ResNeXtBottleneck(64, 32, cardinality=8, dilate=2) for _ in range(depth)]
+        tunnel += [ResNeXtBottleneck(64, 32, cardinality=8, dilate=4) for _ in range(depth)]
+        tunnel += [ResNeXtBottleneck(64, 32, cardinality=8, dilate=8) for _ in range(depth)]
+        tunnel += [ResNeXtBottleneck(64, 32, cardinality=8, dilate=2),
+                   ResNeXtBottleneck(64, 32, cardinality=8, dilate=1)]
+        self.tunnel1 = nn.Sequential(*tunnel)
 
-
-
-        self.entrance = nn.Sequential(nn.Conv2d(3, 64, kernel_size=7, stride=1, padding=3, bias=False),
-                                      nn.ReLU(inplace=True),
-                                      nn.Conv2d(64, 256, kernel_size=4, stride=2, padding=1, bias=False),
-                                      nn.ReLU(inplace=True)
-                                      )
-
-        self.tunnel = DilateTunnel()
-
-        self.exit = nn.Sequential(nn.Conv2d(256, 256, 3, 1, 1, bias=False),
-                                  nn.PixelShuffle(2),
-                                  nn.ReLU(inplace=True),
-                                  nn.Conv2d(64, 3, kernel_size=3, stride=1, padding=1, bias=False)
-                                  )
+        self.exit = nn.Conv2d(32, 3, kernel_size=3, stride=1, padding=1)
 
     def forward(self, x):
-        x = self.entrance(x)
-        x = self.tunnel(x)
-        return self.exit(x)
+        lv1 = self.entrance1(x)
+        lv2 = self.entrance2(lv1)
+        lv3 = self.entrance3(lv2)  # need discussion
+
+        lv3 = self.up3(self.tunnel3(lv3))
+
+        lv2 = self.tunnel2((self.con2(torch.cat([lv2, lv3], 1)), lv3)) + lv3
+        lv2 = self.up2(lv2)
+
+        lv1 = self.tunnel1((self.con1(torch.cat([lv1, lv2], 1)), lv2)) + lv2
+        return self.exit(lv1)
 
 
 class PatchD(nn.Module):
