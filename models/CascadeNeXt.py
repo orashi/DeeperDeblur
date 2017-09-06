@@ -7,7 +7,7 @@ class ResNeXtBottleneck(nn.Module):
     def __init__(self, in_channels=256, out_channels=256, stride=1, cardinality=32, dilate=1, extra_channel=0):
         super(ResNeXtBottleneck, self).__init__()
         D = out_channels // 2
-        self.conv_reduce = nn.Conv2d(in_channels, D, kernel_size=1, stride=1, padding=0, bias=False)
+        self.conv_reduce = nn.Conv2d(in_channels+extra_channel, D, kernel_size=1, stride=1, padding=0, bias=False)
         self.conv_conv = nn.Conv2d(D, D, kernel_size=3, stride=stride, padding=dilate, dilation=dilate,
                                    groups=cardinality,
                                    bias=False)
@@ -16,8 +16,9 @@ class ResNeXtBottleneck(nn.Module):
     def forward(self, x, extra=None):
         if extra:
             bottleneck = self.conv_reduce.forward(torch.cat([x, extra], 1))
+        else:
+            bottleneck = self.conv_reduce.forward(x)
 
-        bottleneck = self.conv_reduce.forward(x)
         bottleneck = F.relu(bottleneck, inplace=True)
         bottleneck = self.conv_conv.forward(bottleneck)
         bottleneck = F.relu(bottleneck, inplace=True)
@@ -89,6 +90,32 @@ class DilateTunnel(nn.Module):
 class Pyramid(nn.Module):
     def __init__(self):
         super(Pyramid, self).__init__()
+        self.entrance1 = nn.Sequential(nn.Conv2d(3, 64, kernel_size=7, stride=1, padding=3),
+                                       nn.ReLU(inplace=True))
+        self.entrance2 = nn.Sequential(nn.Conv2d(64, 128, kernel_size=4, stride=2, padding=1),
+                                       nn.ReLU(inplace=True))
+        self.entrance3 = nn.Conv2d(128, 256, kernel_size=4, stride=2, padding=1)
+
+        self.up3 = nn.Sequential(nn.Conv2d(256, 32*4, 3, 1, 1, bias=False),
+                                 nn.PixelShuffle(2),
+                                 nn.ReLU(inplace=True))
+        self.up2 = nn.Sequential(nn.Conv2d(32, 32 * 4, 3, 1, 1, bias=False),
+                                 nn.PixelShuffle(2),
+                                 nn.ReLU(inplace=True))
+
+        tunnel = [DResNeXtBottleneck() for _ in range(30)]
+        self.tunnel3 = nn.Sequential(*tunnel)
+        self.tunnel2 = nn.Sequential(nn.Conv2d(128, 64, 5, 1, 2, bias=False),
+                                     DilateTunnel(3))
+        self.tunnel1 = nn.Sequential(nn.Conv2d(128, 64, 5, 1, 2, bias=False),
+                                     DilateTunnel2(2))
+
+        self.exit1 = nn.Conv2d(64, 3, kernel_size=3, stride=1, padding=1)
+        self.exit2 = nn.Conv2d(64, 3, kernel_size=3, stride=1, padding=1)
+        self.exit3 = nn.Conv2d(64, 3, kernel_size=3, stride=1, padding=1)
+
+
+
 
         self.entrance = nn.Sequential(nn.Conv2d(3, 64, kernel_size=7, stride=1, padding=3, bias=False),
                                       nn.ReLU(inplace=True),
