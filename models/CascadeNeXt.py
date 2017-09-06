@@ -139,10 +139,10 @@ class Pyramid(nn.Module):
 
         lv3 = self.up3(self.tunnel3(lv3))
 
-        lv2 = self.tunnel2((self.con2(torch.cat([lv2, lv3], 1)), lv3)) + lv3
+        lv2 = self.tunnel2((self.con2(torch.cat([lv2, lv3], 1)), lv3))[0] + lv3
         lv2 = self.up2(lv2)
 
-        lv1 = self.tunnel1((self.con1(torch.cat([lv1, lv2], 1)), lv2)) + lv2
+        lv1 = self.tunnel1((self.con1(torch.cat([lv1, lv2], 1)), lv2))[0] + lv2
         return self.exit(lv1)
 
 
