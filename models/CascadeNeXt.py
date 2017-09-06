@@ -109,7 +109,7 @@ class Pyramid(nn.Module):
         self.up2 = nn.Sequential(nn.Conv2d(32, 32 * 4, 3, 1, 1, bias=False),
                                  nn.PixelShuffle(2),
                                  nn.ReLU(inplace=True))
-        self.con1 = nn.Conv2d(160, 32, 5, 1, 2, bias=False)
+        self.con1 = nn.Conv2d(96, 32, 5, 1, 2, bias=False)
 
         tunnel = [DResNeXtBottleneck() for _ in range(30)]
         self.tunnel3 = nn.Sequential(*tunnel)
