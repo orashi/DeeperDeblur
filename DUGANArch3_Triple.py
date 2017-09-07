@@ -97,9 +97,9 @@ if opt.optim:
     optimizerD.load_state_dict(torch.load('%s/optimD_checkpoint.pth' % opt.outf))
 
 schedulerG = lr_scheduler.ReduceLROnPlateau(optimizerG, mode='max', verbose=True, min_lr=0.0000005,
-                                            patience=10)  # 1.5*10^5 iter
+                                            patience=5)  # 1.5*10^5 iter
 schedulerD = lr_scheduler.ReduceLROnPlateau(optimizerD, mode='max', verbose=True, min_lr=0.0000005,
-                                            patience=10)  # 1.5*10^5 iter
+                                            patience=5)  # 1.5*10^5 iter
 
 
 def calc_gradient_penalty(netD, real_data, fake_data):
