@@ -1,10 +1,10 @@
 import argparse
 
-import torch
 import torchvision.utils as vutils
+from torch.autograd import Variable
 
 from data.evalData import *
-from models.DUGANM import *
+from models.CascadeNeXt import *
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--netG', default='', help="path to netG (to continue training)")
