@@ -3,8 +3,8 @@ from math import log10
 
 import torch.backends.cudnn as cudnn
 
-from data.oneData import CreateDataLoader
-from models.UGANModel import *
+from data.DUGData import CreateDataLoader
+from models.CascadeNeXt import *
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--testBatch', type=int, default=1, help='input test batch size')
