@@ -138,7 +138,7 @@ class ImageFolder_test(data.Dataset):
 
 
 def CreateDataLoader(opt):
-    random.seed(opt.manualSeed)
+    # random.seed(opt.manualSeed)
 
     Trans = transforms.Compose([
         transforms.ToTensor(),
