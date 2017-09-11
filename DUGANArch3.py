@@ -34,7 +34,7 @@ parser.add_argument('--netG', default='', help="path to netG (to continue traini
 parser.add_argument('--netD', default='', help="path to netD (to continue training)")
 parser.add_argument('--optim', action='store_true', help='load optimizer\'s checkpoint')
 parser.add_argument('--outf', default='.', help='folder to output images and model checkpoints')
-parser.add_argument('--Diters', type=int, default=1, help='number of D iters per each G iter')
+parser.add_argument('--Diters', type=int, default=5, help='number of D iters per each G iter')
 parser.add_argument('--manualSeed', type=int, default=2345, help='random seed to use. Default=1234')
 parser.add_argument('--baseGeni', type=int, default=0, help='start base of pure pair L1 loss')
 parser.add_argument('--geni', type=int, default=0, help='continue gen image num')

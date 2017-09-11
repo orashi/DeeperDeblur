@@ -8,11 +8,10 @@ from data.DUGData import CreateDataLoader
 from models.CascadeNeXt import *
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--testBatch', type=int, default=1, help='input test batch size')
+parser.add_argument('--testBatch', type=int, default=1, help='DO NOT CHANGE THIS!!!')
 parser.add_argument('--netG', default='', help="path to netG (to continue training)")
 parser.add_argument('--dataroot', required=True, help='path to dataset')
 parser.add_argument('--workers', type=int, help='number of data loading workers', default=4)
-parser.add_argument('--batchSize', type=int, default=4, help='input batch size')
 parser.add_argument('--cuda', action='store_true', help='enables cuda')
 opt = parser.parse_args()
 print(opt)

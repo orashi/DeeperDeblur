@@ -35,8 +35,8 @@ except OSError:
     pass
 for input, name in dataloader_test:
     prediction = netG(Variable(input.cuda() if opt.cuda else input, volatile=True))
-    vutils.save_image(torch.squeeze(prediction[2].data).mul(0.5).add(0.5),
-                      os.path.join(os.path.split(opt.dataroot)[0], os.path.split(opt.dataroot)[1] + ' result', name[0]),
+    vutils.save_image(torch.squeeze(prediction.data).mul(0.5).add(0.5),
+                      os.path.join(os.path.split(opt.dataroot)[0], os.path.split(opt.dataroot)[1] + 'result', name[0]),
                       padding=0)
     print(name[0] + '　処理完了')
     prediction = 0
