@@ -5,6 +5,7 @@ import os
 import os.path
 import random
 
+import numpy as np
 import torch
 import torch.utils.data as data
 import torchvision.transforms as transforms
@@ -15,6 +16,19 @@ IMG_EXTENSIONS = [
     '.jpg', '.JPG', '.jpeg', '.JPEG',
     '.png', '.PNG', '.ppm', '.PPM', '.bmp', '.BMP',
 ]
+
+
+def getDarkChannel(im=None):
+    width, height = im.size
+    numWindowPixels = 15
+    padding = math.ceil(numWindowPixels / 2.0)
+    J = np.zeros((height, width))
+    paddedImage = np.pad(im, (padding, padding), 'constant', constant_values=(np.inf, np.inf))
+    for j in range(0, height):
+        for i in range(0, width):
+            window = paddedImage[j: j + numWindowPixels - 1, i: i + numWindowPixels - 1, :]
+            J[j, i] = np.amin(window)
+    return J
 
 
 class RandomSizedCrop(object):
