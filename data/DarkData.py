@@ -190,19 +190,31 @@ if __name__ == '__main__':
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
 
+    a = Trans(a)
+
+
     start_Real = time.time()
-    c = F.pad(Trans(a).unsqueeze(0), (7, 7, 7, 7), value=1).unsqueeze(0)*-1
+    c = F.pad(a.unsqueeze(0), (7, 7, 7, 7), value=1).unsqueeze(0)*-1
     c = F.max_pool3d(c, (3, 15, 15), 1, 0).squeeze()*-1
     end_End = time.time()
+
+    print("Method 2: %f real seconds" % (end_End - start_Real))
 
     c = c.mul(0.5).add(0.5).mul(255).data.numpy()
     Image.fromarray(c).show()
 
+    start_Real = time.time()
+
+    a = a.cuda()
+    end_End = time.time()
+
+    print("CUDA : %f real seconds" % (end_End - start_Real))
 
     start_Real = time.time()
-    c = F.pad(Trans(a).cuda().unsqueeze(0), (7, 7, 7, 7), value=1).unsqueeze(0)*-1
+    c = F.pad(a.unsqueeze(0), (7, 7, 7, 7), value=1).unsqueeze(0)*-1
     c = F.max_pool3d(c, (3, 15, 15), 1, 0).squeeze()*-1
     end_End = time.time()
+    print("Method 3: %f real seconds" % (end_End - start_Real))
 
     c = c.mul(0.5).add(0.5).mul(255).cpu().data.numpy()
     Image.fromarray(c).show()
