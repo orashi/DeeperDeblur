@@ -19,14 +19,15 @@ IMG_EXTENSIONS = [
 
 
 def getDarkChannel(im=None):
-    width, height = im.size
+    im = np.amin(im, 2)
+    height, width = im.shape
     numWindowPixels = 15
     padding = math.ceil(numWindowPixels / 2.0)
     J = np.zeros((height, width))
     paddedImage = np.pad(im, (padding, padding), 'constant', constant_values=(np.inf, np.inf))
     for j in range(0, height):
         for i in range(0, width):
-            window = paddedImage[j: j + numWindowPixels - 1, i: i + numWindowPixels - 1, :]
+            window = paddedImage[j: j + numWindowPixels - 1, i: i + numWindowPixels - 1]
             J[j, i] = np.amin(window)
     return J
 
@@ -167,3 +168,41 @@ def CreateDataLoader(opt):
     return data.DataLoader(dataset_train, batch_size=opt.batchSize, shuffle=True, num_workers=int(opt.workers),
                            drop_last=True), data.DataLoader(dataset_test, batch_size=opt.testBatch,
                                                             num_workers=int(opt.workers))
+
+
+if __name__ == '__main__':
+    import time
+    import torch.nn.functional as F
+
+
+    a = Image.open('nonuniform/natural_04_gyro_01.png').convert('RGB')
+
+    start_Real = time.time()
+    b = getDarkChannel(np.array(a))
+    end_End = time.time()
+
+    print("Method 1: %f real seconds" % (end_End - start_Real))
+    print(b.shape)
+    Image.fromarray(b).show()
+
+    Trans = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    ])
+
+    start_Real = time.time()
+    c = F.pad(Trans(a).unsqueeze(0), (7, 7, 7, 7), value=1).unsqueeze(0)*-1
+    c = F.max_pool3d(c, (3, 15, 15), 1, 0).squeeze()*-1
+    end_End = time.time()
+
+    c = c.mul(0.5).add(0.5).mul(255).data.numpy()
+    Image.fromarray(c).show()
+
+
+    start_Real = time.time()
+    c = F.pad(Trans(a).cuda().unsqueeze(0), (7, 7, 7, 7), value=1).unsqueeze(0)*-1
+    c = F.max_pool3d(c, (3, 15, 15), 1, 0).squeeze()*-1
+    end_End = time.time()
+
+    c = c.mul(0.5).add(0.5).mul(255).cpu().data.numpy()
+    Image.fromarray(c).show()
