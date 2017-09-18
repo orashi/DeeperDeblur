@@ -216,5 +216,7 @@ if __name__ == '__main__':
     end_End = time.time()
     print("Method 3: %f real seconds" % (end_End - start_Real))
 
+    Image.fromarray(F.max_pool2d(c.unsqueeze(0), 4).squeeze().mul(0.5).add(0.5).mul(255).cpu().data.numpy()).show()
+    Image.fromarray(F.max_pool2d(c.unsqueeze(0), 2).squeeze().mul(0.5).add(0.5).mul(255).cpu().data.numpy()).show()
     c = c.mul(0.5).add(0.5).mul(255).cpu().data.numpy()
     Image.fromarray(c).show()

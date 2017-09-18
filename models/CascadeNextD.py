@@ -104,14 +104,14 @@ class Pyramid(nn.Module):
         self.up3 = nn.Sequential(nn.Conv2d(256, 32 * 4, 3, 1, 1, bias=False),
                                  nn.PixelShuffle(2),
                                  nn.ReLU(inplace=True))
-        self.con2 = nn.Conv2d(160, 32, 5, 1, 2, bias=False)
+        self.con2 = nn.Conv2d(161, 32, 5, 1, 2, bias=False)
 
         self.up2 = nn.Sequential(nn.Conv2d(32, 32 * 4, 3, 1, 1, bias=False),
                                  nn.PixelShuffle(2),
                                  nn.ReLU(inplace=True))
-        self.con1 = nn.Conv2d(96, 32, 5, 1, 2, bias=False)
+        self.con1 = nn.Conv2d(97, 32, 5, 1, 2, bias=False)
 
-        tunnel = [DResNeXtBottleneck() for _ in range(30)]
+        tunnel = [DResNeXtBottleneck(257) for _ in range(30)]
         self.tunnel3 = nn.Sequential(*tunnel)
 
         depth = 3
@@ -133,16 +133,19 @@ class Pyramid(nn.Module):
         self.exit = nn.Conv2d(32, 3, kernel_size=3, stride=1, padding=1)
 
     def forward(self, x):
+        d = F.pad(x, (7, 7, 7, 7), value=1).unsqueeze(0) * -1
+        d = F.max_pool3d(d, (3, 15, 15), 1, 0).squeeze() * -1
+
         lv1 = self.entrance1(x)
         lv2 = self.entrance2(lv1)
         lv3 = self.entrance3(lv2)  # need discussion
 
-        lv3 = self.up3(self.tunnel3(lv3))
+        lv3 = self.up3(self.tunnel3(torch.cat([lv3, F.max_pool2d(d, 4)], 1)))
 
-        lv2 = self.tunnel2((self.con2(torch.cat([lv2, lv3], 1)), lv3))[0] + lv3
+        lv2 = self.tunnel2((self.con2(torch.cat([lv2, lv3, F.max_pool2d(d, 2)], 1)), lv3))[0] + lv3
         lv2 = self.up2(lv2)
 
-        lv1 = self.tunnel1((self.con1(torch.cat([lv1, lv2], 1)), lv2))[0] + lv2
+        lv1 = self.tunnel1((self.con1(torch.cat([lv1, lv2, d], 1)), lv2))[0] + lv2
         return self.exit(lv1)
 
 
