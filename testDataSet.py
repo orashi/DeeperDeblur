@@ -30,7 +30,7 @@ print(netG)
 if opt.cuda:
     netG.cuda()
 try:
-    os.makedirs(os.path.join(os.path.split(opt.dataroot)[0], os.path.split(opt.dataroot)[1] + ' result'))
+    os.makedirs(os.path.join(os.path.split(opt.dataroot)[0], os.path.split(opt.dataroot)[1] + 'result'))
 except OSError:
     pass
 

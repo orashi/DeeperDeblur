@@ -135,7 +135,7 @@ class Pyramid(nn.Module):
     def forward(self, x):
         d = F.pad(x, (7, 7, 7, 7), value=1).unsqueeze(1) * -1
         d = F.max_pool3d(d, (3, 15, 15), 1, 0).squeeze().unsqueeze(1) * -1 if d.shape[0] != 1 else F.max_pool3d(d, (
-        3, 15, 15), 1, 0).squeeze().unsqueeze(1).unsqueeze(1) * -1
+        3, 15, 15), 1, 0).squeeze().unsqueeze(0).unsqueeze(1) * -1
 
         lv1 = self.entrance1(x)
         lv2 = self.entrance2(lv1)

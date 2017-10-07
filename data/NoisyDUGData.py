@@ -5,6 +5,7 @@ import os
 import os.path
 import random
 
+import numpy
 import torch
 import torch.utils.data as data
 import torchvision.transforms as transforms
@@ -32,7 +33,7 @@ class RandomSizedCrop(object):
     def __call__(self, img1, img2):
         for attempt in range(10):
             area = img1.size[0] * img1.size[1]
-            target_area = random.uniform(0.018, 0.087) * area  # fix this 0.068, 0.08/0.018, 0.087
+            target_area = random.uniform(0.068, 0.08) * area  # fix this
             aspect_ratio = random.uniform(3. / 4, 4. / 3)
 
             w = int(round(math.sqrt(target_area * aspect_ratio)))
@@ -108,12 +109,15 @@ class ImageFolder_train(data.Dataset):
 
         #############################################
 
+
         indices = [0, 1, 2]
         random.shuffle(indices)
         indices = torch.LongTensor(indices)
 
-        return torch.index_select(self.transform(Bimg), 0, indices), torch.index_select(self.transform(Simg), 0,
-                                                                                        indices)
+        Bimg, Simg = torch.index_select(self.transform(Bimg), 0, indices), torch.index_select(self.transform(Simg), 0,
+                                                                                              indices)
+        noise = torch.FloatTensor(Bimg.shape).normal_(0, abs(numpy.random.normal(0, 4 / 255)))
+        return (Bimg + noise).clamp(-1, 1), Simg
 
     def __len__(self):
         return len(self.imgs)
