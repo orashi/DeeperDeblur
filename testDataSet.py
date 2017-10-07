@@ -33,6 +33,7 @@ try:
     os.makedirs(os.path.join(os.path.split(opt.dataroot)[0], os.path.split(opt.dataroot)[1] + ' result'))
 except OSError:
     pass
+
 for input, name in dataloader_test:
     prediction = netG(Variable(input.cuda() if opt.cuda else input, volatile=True))
     vutils.save_image(torch.squeeze(prediction.data).mul(0.5).add(0.5),
