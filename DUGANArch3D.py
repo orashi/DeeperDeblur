@@ -5,7 +5,6 @@ from math import log10
 
 import torch.backends.cudnn as cudnn
 import torch.optim as optim
-import torch.optim.lr_scheduler as lr_scheduler
 import torchvision.utils as vutils
 from tensorboardX import SummaryWriter
 from torch.autograd import Variable, grad
@@ -34,7 +33,7 @@ parser.add_argument('--netG', default='', help="path to netG (to continue traini
 parser.add_argument('--netD', default='', help="path to netD (to continue training)")
 parser.add_argument('--optim', action='store_true', help='load optimizer\'s checkpoint')
 parser.add_argument('--outf', default='.', help='folder to output images and model checkpoints')
-parser.add_argument('--Diters', type=int, default=0, help='number of D iters per each G iter')
+parser.add_argument('--Diters', type=int, default=1, help='number of D iters per each G iter')
 parser.add_argument('--manualSeed', type=int, default=2345, help='random seed to use. Default=1234')
 parser.add_argument('--baseGeni', type=int, default=0, help='start base of pure pair L1 loss')
 parser.add_argument('--geni', type=int, default=0, help='continue gen image num')
@@ -100,8 +99,8 @@ if opt.optim:
 #                                             patience=10)  # 1.5*10^5 iter
 # schedulerD = lr_scheduler.ReduceLROnPlateau(optimizerD, mode='max', verbose=True, min_lr=0.0000005,
 #                                             patience=10)  # 1.5*10^5 iter
-schedulerG = lr_scheduler.MultiStepLR(optimizerG, milestones=[60, 120], gamma=0.1)  # 1.5*10^5 iter
-schedulerD = lr_scheduler.MultiStepLR(optimizerD, milestones=[60, 120], gamma=0.1)
+#schedulerG = lr_scheduler.MultiStepLR(optimizerG, milestones=[60, 120], gamma=0.1)  # 1.5*10^5 iter
+#schedulerD = lr_scheduler.MultiStepLR(optimizerD, milestones=[60, 120], gamma=0.1)
 
 
 def calc_gradient_penalty(netD, real_data, fake_data):
@@ -285,8 +284,8 @@ for epoch in range(opt.epoi, opt.niter):
 
     avg_psnr = epoch_loss / epoch_iter_count
     writer.add_scalar('Train epoch PSNR', avg_psnr, epoch)
-    schedulerG.step(avg_psnr)
-    schedulerD.step(avg_psnr)
+    #schedulerG.step(avg_psnr)
+    #schedulerD.step(avg_psnr)
 
     # do checkpointing
     if opt.cut == 0:

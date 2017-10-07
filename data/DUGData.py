@@ -151,5 +151,5 @@ def CreateDataLoader(opt):
     assert dataset_test, dataset_train
 
     return data.DataLoader(dataset_train, batch_size=opt.batchSize, shuffle=True, num_workers=int(opt.workers),
-                           drop_last=True), data.DataLoader(dataset_test, batch_size=opt.testBatch,
+                           drop_last=True), data.DataLoader(dataset_test, batch_size=opt.testBatch, drop_last=True,
                                                             num_workers=int(opt.workers))

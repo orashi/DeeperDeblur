@@ -5,7 +5,7 @@ import torch.backends.cudnn as cudnn
 from torch.autograd import Variable
 
 from data.DUGData import CreateDataLoader
-from models.CascadeNeXt import *
+from models.CascadeNextD import *
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--testBatch', type=int, default=1, help='DO NOT CHANGE THIS!!!')
@@ -13,6 +13,7 @@ parser.add_argument('--netG', default='', help="path to netG (to continue traini
 parser.add_argument('--dataroot', required=True, help='path to dataset')
 parser.add_argument('--workers', type=int, help='number of data loading workers', default=4)
 parser.add_argument('--cuda', action='store_true', help='enables cuda')
+parser.add_argument('--batchSize', type=int, default=4, help='input batch size')
 opt = parser.parse_args()
 print(opt)
 
