@@ -4,7 +4,7 @@ import torchvision.utils as vutils
 from torch.autograd import Variable
 
 from data.evalData import *
-from models.CascadeNeXt import *
+from models.CascadeNextD import *
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--netG', default='', help="path to netG (to continue training)")

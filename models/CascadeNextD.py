@@ -133,13 +133,14 @@ class Pyramid(nn.Module):
         self.exit = nn.Conv2d(32, 3, kernel_size=3, stride=1, padding=1)
 
     def forward(self, x):
-        d = F.pad(x, (7, 7, 7, 7), value=1).unsqueeze(0) * -1
-        d = F.max_pool3d(d, (3, 15, 15), 1, 0).squeeze().unsqueeze(1) * -1
+        d = F.pad(x, (7, 7, 7, 7), value=1).unsqueeze(1) * -1
+        d = F.max_pool3d(d, (3, 15, 15), 1, 0).squeeze().unsqueeze(1) * -1 if d.shape[0] != 1 else F.max_pool3d(d, (
+        3, 15, 15), 1, 0).squeeze().unsqueeze(1).unsqueeze(1) * -1
 
         lv1 = self.entrance1(x)
         lv2 = self.entrance2(lv1)
         lv3 = self.entrance3(lv2)  # need discussion
-        #print(lv3.shape,F.max_pool2d(d, 4).shape, torch.cat([lv3, F.max_pool2d(d, 4)], 1).shape)
+        # print(lv3.shape,F.max_pool2d(d, 4).shape, torch.cat([lv3, F.max_pool2d(d, 4)], 1).shape)
         lv3 = self.up3(self.tunnel3(torch.cat([lv3, F.max_pool2d(d, 4)], 1)))
 
         lv2 = self.tunnel2((self.con2(torch.cat([lv2, lv3, F.max_pool2d(d, 2)], 1)), lv3))[0] + lv3
