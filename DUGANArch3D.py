@@ -9,8 +9,8 @@ import torchvision.utils as vutils
 from tensorboardX import SummaryWriter
 from torch.autograd import Variable, grad
 
-from data.DUGData import CreateDataLoader
-from models.CascadeNextD import *
+from data.NoisyDUGData import CreateDataLoader
+from models.CascaderNext import *
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataroot', required=True, help='path to dataset')
