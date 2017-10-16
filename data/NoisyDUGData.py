@@ -79,13 +79,14 @@ def loader(path):
 
 
 class ImageFolder_train(data.Dataset):
-    def __init__(self, root, transform=None):  # , option=None):
+    def __init__(self, root, option, transform=None):  # , option=None):
         imgs = make_dataset(root)
         if len(imgs) == 0:
             raise (RuntimeError("Found 0 images in folders."))
 
         self.imgs = imgs
         self.transform = transform
+        self.variance = option.noiseV
 
     def __getitem__(self, index):
         Bpath, Spath = self.imgs[index]
@@ -116,7 +117,7 @@ class ImageFolder_train(data.Dataset):
 
         Bimg, Simg = torch.index_select(self.transform(Bimg), 0, indices), torch.index_select(self.transform(Simg), 0,
                                                                                               indices)
-        noise = torch.FloatTensor(Bimg.shape).normal_(0, abs(numpy.random.normal(0, 4 / 255)))
+        noise = torch.FloatTensor(Bimg.shape).normal_(0, abs(numpy.random.normal(0, self.variance / 255.0)))
         return (Bimg + noise).clamp(-1, 1), Simg
 
     def __len__(self):
@@ -149,7 +150,7 @@ def CreateDataLoader(opt):
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
 
-    dataset_train = ImageFolder_train(root=os.path.join(opt.dataroot, 'train'), transform=Trans)
+    dataset_train = ImageFolder_train(root=os.path.join(opt.dataroot, 'train'), option=opt, transform=Trans)
     dataset_test = ImageFolder_test(root=os.path.join(opt.dataroot, 'test'), transform=Trans)
 
     assert dataset_test, dataset_train

@@ -38,6 +38,7 @@ parser.add_argument('--manualSeed', type=int, default=2345, help='random seed to
 parser.add_argument('--baseGeni', type=int, default=0, help='start base of pure pair L1 loss')
 parser.add_argument('--geni', type=int, default=0, help='continue gen image num')
 parser.add_argument('--epoi', type=int, default=0, help='continue epoch num')
+parser.add_argument('--noiseV', type=int, default=4, help='noise variance scale 0~255')
 parser.add_argument('--env', type=str, default=None, help='tensorboard env')
 
 opt = parser.parse_args()
