@@ -99,7 +99,7 @@ class Pyramid(nn.Module):
                                        nn.ReLU(inplace=True))
         self.entrance2 = nn.Sequential(nn.Conv2d(64, 128, kernel_size=4, stride=2, padding=1),
                                        nn.ReLU(inplace=True))
-        self.entrance3 = nn.Conv2d(128, 255, kernel_size=4, stride=2, padding=1)
+        self.entrance3 = nn.Conv2d(128, 256, kernel_size=4, stride=2, padding=1)
 
         self.up3 = nn.Sequential(nn.Conv2d(256, 32 * 4, 3, 1, 1, bias=False),
                                  nn.PixelShuffle(2),
@@ -137,7 +137,7 @@ class Pyramid(nn.Module):
         lv2 = self.entrance2(lv1)
         lv3 = self.entrance3(lv2)  # need discussion
 
-        lv3_up = self.up2(lv3)
+        lv3_up = self.up3(lv3)
         lv3 = self.up3(self.tunnel3(lv3))
 
         lv2_up = self.up2(lv3)
