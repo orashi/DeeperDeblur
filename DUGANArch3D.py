@@ -5,6 +5,7 @@ from math import log10
 
 import torch.backends.cudnn as cudnn
 import torch.optim as optim
+import torch.optim.lr_scheduler as lr_scheduler
 import torchvision.utils as vutils
 from tensorboardX import SummaryWriter
 from torch.autograd import Variable, grad
@@ -96,10 +97,10 @@ if opt.optim:
     optimizerG.load_state_dict(torch.load('%s/optimG_checkpoint.pth' % opt.outf))
     optimizerD.load_state_dict(torch.load('%s/optimD_checkpoint.pth' % opt.outf))
 
-# schedulerG = lr_scheduler.ReduceLROnPlateau(optimizerG, mode='max', verbose=True, min_lr=0.0000005,
-#                                             patience=10)  # 1.5*10^5 iter
-# schedulerD = lr_scheduler.ReduceLROnPlateau(optimizerD, mode='max', verbose=True, min_lr=0.0000005,
-#                                             patience=10)  # 1.5*10^5 iter
+schedulerG = lr_scheduler.ReduceLROnPlateau(optimizerG, mode='max', verbose=True, min_lr=0.0000005,
+                                            patience=8)  # 1.5*10^5 iter
+schedulerD = lr_scheduler.ReduceLROnPlateau(optimizerD, mode='max', verbose=True, min_lr=0.0000005,
+                                            patience=8)  # 1.5*10^5 iter
 #schedulerG = lr_scheduler.MultiStepLR(optimizerG, milestones=[60, 120], gamma=0.1)  # 1.5*10^5 iter
 #schedulerD = lr_scheduler.MultiStepLR(optimizerD, milestones=[60, 120], gamma=0.1)
 
@@ -285,8 +286,8 @@ for epoch in range(opt.epoi, opt.niter):
 
     avg_psnr = epoch_loss / epoch_iter_count
     writer.add_scalar('Train epoch PSNR', avg_psnr, epoch)
-    #schedulerG.step(avg_psnr)
-    #schedulerD.step(avg_psnr)
+    schedulerG.step(avg_psnr)
+    schedulerD.step(avg_psnr)
 
     # do checkpointing
     if opt.cut == 0:
