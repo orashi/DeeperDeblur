@@ -11,7 +11,7 @@ from tensorboardX import SummaryWriter
 from torch.autograd import Variable, grad
 
 from data.NoisyDUGData import CreateDataLoader
-from models.CascadeNextD import *
+from models.CascaderNextLite import *
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataroot', required=True, help='path to dataset')
