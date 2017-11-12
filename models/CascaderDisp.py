@@ -167,7 +167,7 @@ class Pyramid(nn.Module):
         lv3 = self.entrance3(lv2)  # need discussion
 
         lv3_up = self.up3(lv3)
-        lv3 = self.up3((self.tunnel3(lv3), corr3))
+        lv3 = self.up3(self.tunnel3((lv3, corr3)))
 
         lv2_up = self.up2(lv3)
         lv2 = self.tunnel2((self.con2(torch.cat([lv2, lv3, lv3_up], 1)), torch.cat([lv3, corr2], 1)))[0] + lv3
