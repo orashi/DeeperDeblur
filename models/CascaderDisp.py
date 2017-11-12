@@ -72,9 +72,9 @@ class CorrelationLayer2D(nn.Module):
         self.stride_1 = stride_1
         self.stride_2 = stride_2
 
-    def forward(self, x_1, x_2):
+    def forward(self, x_1):
         x_1 = x_1
-        x_2 = F.pad(x_2, [self.max_displacement] * 4)
+        x_2 = F.pad(x_1, [self.max_displacement] * 4)
         return torch.cat([torch.sum(x_1 * x_2[:, :, _x:_x + x_1.size(2), _y:_y + x_1.size(3)], 1).unsqueeze(1) for _x in
                           range(0, self.max_displacement * 2 + 1, self.stride_1) for _y in
                           range(0, self.max_displacement * 2 + 1, self.stride_2)], 1)
@@ -158,7 +158,7 @@ class Pyramid(nn.Module):
         self.exit = nn.Conv2d(32, 3, kernel_size=3, stride=1, padding=1)
 
     def forward(self, x):
-        corr1 = self.corr1(x, x)
+        corr1 = self.corr1(x)
         corr2 = self.corr2(corr1)
         corr3 = self.corr3(corr2)
 
