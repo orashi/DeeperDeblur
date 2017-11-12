@@ -33,7 +33,6 @@ class ResNeXtBottleneck(nn.Module):
 
 class DResNeXtBottleneck(nn.Module):
     def __init__(self, in_channels=256, out_channels=256, stride=1, cardinality=32):
-
         super(DResNeXtBottleneck, self).__init__()
         D = out_channels // 2
         self.conv_reduce = nn.Conv2d(in_channels, D, kernel_size=1, stride=1, padding=0, bias=False)
@@ -126,23 +125,23 @@ class Pyramid(nn.Module):
                                  nn.ReLU(inplace=True))
         self.con1 = nn.Conv2d(96 + 32, 32, 5, 1, 2, bias=False)
 
-        tunnel = [ResNeXtBottleneck() for _ in range(30)]
+        tunnel = [ResNeXtBottleneck(256 + 128, 256) for _ in range(30)]
         self.tunnel3 = nn.Sequential(*tunnel)
 
         depth = 3
-        tunnel = [ResNeXtBottleneck(64, 32, cardinality=8, dilate=1) for _ in range(depth)]
-        tunnel += [ResNeXtBottleneck(64, 32, cardinality=8, dilate=2) for _ in range(depth)]
-        tunnel += [ResNeXtBottleneck(64, 32, cardinality=8, dilate=4) for _ in range(depth)]
-        tunnel += [ResNeXtBottleneck(64, 32, cardinality=8, dilate=2),
-                   ResNeXtBottleneck(64, 32, cardinality=8, dilate=1)]
+        tunnel = [ResNeXtBottleneck(64 + 64, 32, cardinality=8, dilate=1) for _ in range(depth)]
+        tunnel += [ResNeXtBottleneck(64 + 64, 32, cardinality=8, dilate=2) for _ in range(depth)]
+        tunnel += [ResNeXtBottleneck(64 + 64, 32, cardinality=8, dilate=4) for _ in range(depth)]
+        tunnel += [ResNeXtBottleneck(64 + 64, 32, cardinality=8, dilate=2),
+                   ResNeXtBottleneck(64 + 64, 32, cardinality=8, dilate=1)]
         self.tunnel2 = nn.Sequential(*tunnel)
 
-        tunnel = [ResNeXtBottleneck(64, 32, cardinality=8, dilate=1) for _ in range(depth)]
-        tunnel += [ResNeXtBottleneck(64, 32, cardinality=8, dilate=2) for _ in range(depth)]
-        tunnel += [ResNeXtBottleneck(64, 32, cardinality=8, dilate=4) for _ in range(depth)]
-        tunnel += [ResNeXtBottleneck(64, 32, cardinality=8, dilate=8) for _ in range(depth)]
-        tunnel += [ResNeXtBottleneck(64, 32, cardinality=8, dilate=2),
-                   ResNeXtBottleneck(64, 32, cardinality=8, dilate=1)]
+        tunnel = [ResNeXtBottleneck(64 + 32, 32, cardinality=8, dilate=1) for _ in range(depth)]
+        tunnel += [ResNeXtBottleneck(64 + 32, 32, cardinality=8, dilate=2) for _ in range(depth)]
+        tunnel += [ResNeXtBottleneck(64 + 32, 32, cardinality=8, dilate=4) for _ in range(depth)]
+        tunnel += [ResNeXtBottleneck(64 + 32, 32, cardinality=8, dilate=8) for _ in range(depth)]
+        tunnel += [ResNeXtBottleneck(64 + 32, 32, cardinality=8, dilate=2),
+                   ResNeXtBottleneck(64 + 32, 32, cardinality=8, dilate=1)]
         self.tunnel1 = nn.Sequential(*tunnel)
 
         self.exit = nn.Conv2d(32, 3, kernel_size=3, stride=1, padding=1)
