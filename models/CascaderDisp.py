@@ -103,10 +103,10 @@ class Pyramid(nn.Module):
                                    nn.Conv2d(441, 32, kernel_size=3, stride=1, padding=1),
                                    nn.ReLU(inplace=True))
 
-        self.corr2 = nn.Sequential(nn.Conv2d(32, 64, kernel_size=4, stride=2, padding=2),
+        self.corr2 = nn.Sequential(nn.Conv2d(32, 64, kernel_size=4, stride=2, padding=1),
                                    nn.ReLU(inplace=True))
 
-        self.corr3 = nn.Sequential(nn.Conv2d(64, 128, kernel_size=4, stride=2, padding=2),
+        self.corr3 = nn.Sequential(nn.Conv2d(64, 128, kernel_size=4, stride=2, padding=1),
                                    nn.ReLU(inplace=True))
 
         self.entrance1 = nn.Sequential(nn.Conv2d(3, 64, kernel_size=7, stride=1, padding=3),
@@ -156,7 +156,7 @@ class Pyramid(nn.Module):
         lv3 = self.entrance3(lv2)  # need discussion
 
         lv3_up = self.up3(lv3)
-        lv3 = self.up3(self.tunnel3((lv3, corr3)))
+        lv3 = self.up3(self.tunnel3((lv3, corr3))[0])
 
         lv2_up = self.up2(lv3)
         lv2 = self.tunnel2((self.con2(torch.cat([lv2, lv3, lv3_up], 1)), torch.cat([lv3, corr2], 1)))[0] + lv3
