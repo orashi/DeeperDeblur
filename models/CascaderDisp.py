@@ -32,18 +32,8 @@ class ResNeXtBottleneck(nn.Module):
 
 
 class DResNeXtBottleneck(nn.Module):
-    """
-    RexNeXt bottleneck type C (https://github.com/facebookresearch/ResNeXt/blob/master/models/resnext.lua)
-    """
-
     def __init__(self, in_channels=256, out_channels=256, stride=1, cardinality=32):
-        """ Constructor
-        Args:
-            in_channels: input channel dimensionality
-            out_channels: output channel dimensionality
-            stride: conv stride. Replaces pooling layer.
-            cardinality: num of convolution groups.
-        """
+
         super(DResNeXtBottleneck, self).__init__()
         D = out_channels // 2
         self.conv_reduce = nn.Conv2d(in_channels, D, kernel_size=1, stride=1, padding=0, bias=False)
@@ -136,7 +126,7 @@ class Pyramid(nn.Module):
                                  nn.ReLU(inplace=True))
         self.con1 = nn.Conv2d(96 + 32, 32, 5, 1, 2, bias=False)
 
-        tunnel = [DResNeXtBottleneck() for _ in range(30)]
+        tunnel = [ResNeXtBottleneck() for _ in range(30)]
         self.tunnel3 = nn.Sequential(*tunnel)
 
         depth = 3
