@@ -158,7 +158,7 @@ class Pyramid(nn.Module):
         self.exit = nn.Conv2d(32, 3, kernel_size=3, stride=1, padding=1)
 
     def forward(self, x):
-        corr1 = self.corr1(x)
+        corr1 = self.corr1(x, x)
         corr2 = self.corr2(corr1)
         corr3 = self.corr3(corr2)
 
