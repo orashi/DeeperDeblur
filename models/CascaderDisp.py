@@ -99,9 +99,9 @@ class DilateTunnel(nn.Module):
 class Pyramid(nn.Module):
     def __init__(self):
         super(Pyramid, self).__init__()
-        self.corr1 = nn.Sequential(nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=1),
+        self.corr1 = nn.Sequential(nn.Conv2d(3, 8, kernel_size=3, stride=1, padding=1),
                                    nn.ReLU(inplace=True),
-                                   nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
+                                   nn.Conv2d(8, 16, kernel_size=3, stride=1, padding=1),
                                    nn.ReLU(inplace=True),
                                    CorrelationLayer2D(max_disp=20, stride_1=2, stride_2=2),
                                    nn.Conv2d(441, 32, kernel_size=3, stride=1, padding=1),
