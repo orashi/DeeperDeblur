@@ -64,7 +64,7 @@ class CorrelationLayer2D(nn.Module):
     def forward(self, x_1):
         x_1 = x_1
         x_2 = F.pad(x_1, [self.max_displacement] * 4)
-        return torch.cat([torch.sum(x_1 * x_2[:, :, _x:_x + x_1.size(2), _y:_y + x_1.size(3)], 1).unsqueeze(1) for _x in
+        return torch.cat([torch.sum((x_1 - x_2[:, :, _x:_x + x_1.size(2), _y:_y + x_1.size(3)]).abs(), 1).unsqueeze(1) for _x in
                           range(0, self.max_displacement * 2 + 1, self.stride_1) for _y in
                           range(0, self.max_displacement * 2 + 1, self.stride_2)], 1)
 
@@ -99,11 +99,7 @@ class DilateTunnel(nn.Module):
 class Pyramid(nn.Module):
     def __init__(self):
         super(Pyramid, self).__init__()
-        self.corr1 = nn.Sequential(nn.Conv2d(3, 8, kernel_size=3, stride=1, padding=1),
-                                   nn.ReLU(inplace=True),
-                                   nn.Conv2d(8, 16, kernel_size=3, stride=1, padding=1),
-                                   nn.ReLU(inplace=True),
-                                   CorrelationLayer2D(max_disp=20, stride_1=2, stride_2=2),
+        self.corr1 = nn.Sequential(CorrelationLayer2D(max_disp=20, stride_1=2, stride_2=2),
                                    nn.Conv2d(441, 32, kernel_size=3, stride=1, padding=1),
                                    nn.ReLU(inplace=True))
 
