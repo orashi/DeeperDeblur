@@ -101,8 +101,10 @@ schedulerG = lr_scheduler.ReduceLROnPlateau(optimizerG, mode='max', verbose=True
                                             patience=8)  # 1.5*10^5 iter
 schedulerD = lr_scheduler.ReduceLROnPlateau(optimizerD, mode='max', verbose=True, min_lr=0.0000005,
                                             patience=8)  # 1.5*10^5 iter
-#schedulerG = lr_scheduler.MultiStepLR(optimizerG, milestones=[60, 120], gamma=0.1)  # 1.5*10^5 iter
-#schedulerD = lr_scheduler.MultiStepLR(optimizerD, milestones=[60, 120], gamma=0.1)
+
+
+# schedulerG = lr_scheduler.MultiStepLR(optimizerG, milestones=[60, 120], gamma=0.1)  # 1.5*10^5 iter
+# schedulerD = lr_scheduler.MultiStepLR(optimizerD, milestones=[60, 120], gamma=0.1)
 
 
 def calc_gradient_penalty(netD, real_data, fake_data):
@@ -131,6 +133,19 @@ def calc_gradient_penalty(netD, real_data, fake_data):
 
 flag = 1
 for epoch in range(opt.epoi, opt.niter):
+    if opt.test and epoch % 3 == 0:
+        avg_psnr = 0
+        for batch in dataloader_test:
+            input, target = [x.cuda() for x in batch]
+            prediction = netG(Variable(input, volatile=True))
+            mse = criterion_L2(prediction.mul(0.5).add(0.5), Variable(target.mul(0.5).add(0.5)))
+            psnr = 10 * log10(1 / mse.data[0])
+            avg_psnr += psnr
+        avg_psnr = avg_psnr / len(dataloader_test)
+
+        writer.add_scalar('Test epoch PSNR', avg_psnr, epoch)
+
+        print("===> Avg. PSNR: {:.4f} dB".format(avg_psnr))
 
     epoch_loss = 0
     epoch_iter_count = 0
@@ -269,21 +284,6 @@ for epoch in range(opt.epoi, opt.niter):
                                   '%s/fake_samples_gen_iter_%08d.png' % (opt.outf, gen_iterations))
 
             gen_iterations += 1
-
-    if opt.test:
-        if epoch % 5 == 0:
-            avg_psnr = 0
-            for batch in dataloader_test:
-                input, target = [x.cuda() for x in batch]
-                prediction = netG(Variable(input, volatile=True))
-                mse = criterion_L2(prediction.mul(0.5).add(0.5), Variable(target.mul(0.5).add(0.5)))
-                psnr = 10 * log10(1 / mse.data[0])
-                avg_psnr += psnr
-            avg_psnr = avg_psnr / len(dataloader_test)
-
-            writer.add_scalar('Test epoch PSNR', avg_psnr, epoch)
-
-            print("===> Avg. PSNR: {:.4f} dB".format(avg_psnr))
 
     avg_psnr = epoch_loss / epoch_iter_count
     writer.add_scalar('Train epoch PSNR', avg_psnr, epoch)
