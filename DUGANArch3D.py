@@ -133,19 +133,7 @@ def calc_gradient_penalty(netD, real_data, fake_data):
 
 flag = 1
 for epoch in range(opt.epoi, opt.niter):
-    if opt.test and epoch % 3 == 0:
-        avg_psnr = 0
-        for batch in dataloader_test:
-            input, target = [x.cuda() for x in batch]
-            prediction = netG(Variable(input, volatile=True))
-            mse = criterion_L2(prediction.mul(0.5).add(0.5), Variable(target.mul(0.5).add(0.5)))
-            psnr = 10 * log10(1 / mse.data[0])
-            avg_psnr += psnr
-        avg_psnr = avg_psnr / len(dataloader_test)
 
-        writer.add_scalar('Test epoch PSNR', avg_psnr, epoch)
-
-        print("===> Avg. PSNR: {:.4f} dB".format(avg_psnr))
 
     epoch_loss = 0
     epoch_iter_count = 0
@@ -289,6 +277,20 @@ for epoch in range(opt.epoi, opt.niter):
     writer.add_scalar('Train epoch PSNR', avg_psnr, epoch)
     schedulerG.step(avg_psnr)
     schedulerD.step(avg_psnr)
+
+    if opt.test and epoch % 3 == 0:
+        avg_psnr = 0
+        for batch in dataloader_test:
+            input, target = [x.cuda() for x in batch]
+            prediction = netG(Variable(input, volatile=True))
+            mse = criterion_L2(prediction.mul(0.5).add(0.5), Variable(target.mul(0.5).add(0.5)))
+            psnr = 10 * log10(1 / mse.data[0])
+            avg_psnr += psnr
+        avg_psnr = avg_psnr / len(dataloader_test)
+
+        writer.add_scalar('Test epoch PSNR', avg_psnr, epoch)
+
+        print("===> Avg. PSNR: {:.4f} dB".format(avg_psnr))
 
     # do checkpointing
     if opt.cut == 0:
