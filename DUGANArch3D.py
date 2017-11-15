@@ -237,10 +237,11 @@ for epoch in range(opt.epoi, opt.niter):
             ############################
 
             if gen_iterations < opt.baseGeni or not opt.adv:
-                writer.add_scalar('MSE Loss', contentLoss.data[0], gen_iterations)
-                print('[%d/%d][%d/%d][%d] err_G: %f'
-                      % (epoch, opt.niter, iter_count + extra * len(dataloader_train),
-                         len(dataloader_train) * 2 * (opt.Diters + 1), gen_iterations, contentLoss.data[0]))
+                if gen_iterations % 100 == 0:
+                    writer.add_scalar('MSE Loss', contentLoss.data[0], gen_iterations)
+                    print('[%d/%d][%d/%d][%d] err_G: %f'
+                          % (epoch, opt.niter, iter_count + extra * len(dataloader_train),
+                             len(dataloader_train) * 2 * (opt.Diters + 1), gen_iterations, contentLoss.data[0]))
             else:
                 writer.add_scalar('MSE Loss', contentLoss.data[0], gen_iterations)
                 writer.add_scalar('wasserstein distance', errD.data[0], gen_iterations)
@@ -254,12 +255,12 @@ for epoch in range(opt.epoi, opt.niter):
                          gen_iterations, errD.data[0], errG.data[0], errD_real.data[0], errD_fake.data[0],
                          contentLoss.data[0]))
 
-            if gen_iterations % 100 == 0:
+            if gen_iterations % 500 == 0:
                 fake = netG(Variable(fixed_blur, volatile=True))
                 writer.add_image('deblur imgs', vutils.make_grid(fake.data.mul(0.5).add(0.5).clamp(0, 1), nrow=16),
                                  gen_iterations)
 
-            if gen_iterations % 1000 == 0:
+            if gen_iterations % 5000 == 0:
                 for name, param in netG.named_parameters():
                     writer.add_histogram('netG ' + name, param.clone().cpu().data.numpy(), gen_iterations)
                 for name, param in netD.named_parameters():
