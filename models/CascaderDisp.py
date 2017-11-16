@@ -110,11 +110,13 @@ class Pyramid(nn.Module):
                                    ResNeXtBottleneck(128, 128)
                                    )
 
-        # self.corr2 = nn.Sequential(nn.Conv2d(32, 64, kernel_size=4, stride=2, padding=1),
-        #                            nn.ReLU(inplace=True))
-        #
-        # self.corr1 = nn.Sequential(nn.Conv2d(64, 128, kernel_size=4, stride=2, padding=1),
-        #                            nn.ReLU(inplace=True))
+        self.corr2 = nn.Sequential(nn.Conv2d(128, 64 * 4, 3, 1, 1, bias=False),
+                                   nn.PixelShuffle(2),
+                                   nn.ReLU(inplace=True))
+
+        self.corr1 = nn.Sequential(nn.Conv2d(64, 32 * 4, 3, 1, 1, bias=False),
+                                   nn.PixelShuffle(2),
+                                   nn.ReLU(inplace=True))
 
         self.entrance1 = nn.Sequential(nn.Conv2d(3, 64, kernel_size=7, stride=1, padding=3),
                                        nn.ReLU(inplace=True))
@@ -155,8 +157,8 @@ class Pyramid(nn.Module):
 
     def forward(self, x):
         corr3 = self.corr3(x)
-        corr2 = F.upsample(corr3, scale_factor=2, mode='bilinear')
-        corr1 = F.upsample(corr2, scale_factor=2, mode='bilinear')
+        corr2 = self.corr2(x)
+        corr1 = self.corr1(x)
 
         lv1 = self.entrance1(x)
         lv2 = self.entrance2(lv1)
