@@ -278,7 +278,7 @@ for epoch in range(opt.epoi, opt.niter):
     schedulerG.step(avg_psnr)
     schedulerD.step(avg_psnr)
 
-    if opt.test and epoch % 3 == 0:
+    if opt.test and epoch % 5 == 0:
         avg_psnr = 0
         for batch in dataloader_test:
             input, target = [x.cuda() for x in batch]

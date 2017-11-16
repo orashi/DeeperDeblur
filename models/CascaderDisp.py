@@ -64,9 +64,10 @@ class CorrelationLayer2D(nn.Module):
     def forward(self, x_1):
         x_1 = x_1
         x_2 = F.pad(x_1, [self.max_displacement] * 4)
-        return torch.cat([torch.sum((x_1 - x_2[:, :, _x:_x + x_1.size(2), _y:_y + x_1.size(3)]).abs(), 1).unsqueeze(1) for _x in
-                          range(0, self.max_displacement * 2 + 1, self.stride_1) for _y in
-                          range(0, self.max_displacement * 2 + 1, self.stride_2)], 1)
+        return torch.cat(
+            [torch.sum((x_1 - x_2[:, :, _x:_x + x_1.size(2), _y:_y + x_1.size(3)]).abs(), 1).unsqueeze(1) for _x in
+             range(0, self.max_displacement * 2 + 1, self.stride_1) for _y in
+             range(0, self.max_displacement * 2 + 1, self.stride_2)], 1)
 
 
 class Tunnel(nn.Module):
@@ -99,15 +100,21 @@ class DilateTunnel(nn.Module):
 class Pyramid(nn.Module):
     def __init__(self):
         super(Pyramid, self).__init__()
-        self.corr1 = nn.Sequential(CorrelationLayer2D(max_disp=20, stride_1=2, stride_2=2),
-                                   nn.Conv2d(441, 32, kernel_size=3, stride=1, padding=1),
-                                   nn.ReLU(inplace=True))
+        self.corr3 = nn.Sequential(CorrelationLayer2D(max_disp=20, stride_1=2, stride_2=2),
+                                   nn.Conv2d(441, 64, kernel_size=4, stride=2, padding=1),
+                                   nn.ReLU(inplace=True),
+                                   nn.Conv2d(64, 128, kernel_size=4, stride=2, padding=1),
+                                   nn.ReLU(inplace=True),
+                                   ResNeXtBottleneck(128, 128),
+                                   ResNeXtBottleneck(128, 128),
+                                   ResNeXtBottleneck(128, 128)
+                                   )
 
-        self.corr2 = nn.Sequential(nn.Conv2d(32, 64, kernel_size=4, stride=2, padding=1),
-                                   nn.ReLU(inplace=True))
-
-        self.corr3 = nn.Sequential(nn.Conv2d(64, 128, kernel_size=4, stride=2, padding=1),
-                                   nn.ReLU(inplace=True))
+        # self.corr2 = nn.Sequential(nn.Conv2d(32, 64, kernel_size=4, stride=2, padding=1),
+        #                            nn.ReLU(inplace=True))
+        #
+        # self.corr1 = nn.Sequential(nn.Conv2d(64, 128, kernel_size=4, stride=2, padding=1),
+        #                            nn.ReLU(inplace=True))
 
         self.entrance1 = nn.Sequential(nn.Conv2d(3, 64, kernel_size=7, stride=1, padding=3),
                                        nn.ReLU(inplace=True))
@@ -147,9 +154,9 @@ class Pyramid(nn.Module):
         self.exit = nn.Conv2d(32, 3, kernel_size=3, stride=1, padding=1)
 
     def forward(self, x):
-        corr1 = self.corr1(x)
-        corr2 = self.corr2(corr1)
-        corr3 = self.corr3(corr2)
+        corr3 = self.corr3(x)
+        corr2 = F.upsample(corr3, scale_factor=2, mode='bilinear')
+        corr1 = F.upsample(corr2, scale_factor=2, mode='bilinear')
 
         lv1 = self.entrance1(x)
         lv2 = self.entrance2(lv1)
